@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Insumo - FlameSystem{% endblock %}
+
+{% block content %}
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h4 class="mb-0">Editar Insumo: {{ insumo.nombre_insumo }}</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label">Cantidad</label>
+                    <input type="number" name="cantidad_insumo" value="{{ insumo.cantidad_insumo }}" class="form-control" min="1" required>
+                </div>
+
+                <!-- ✅ NUEVO: Unidad de medida con valor actual seleccionado -->
+                <div class="mb-3">
+                    <label class="form-label">Unidad de Medida</label>
+                    <select name="unidad_medida" class="form-select" required>
+                        <option value="" disabled>-- Selecciona una unidad --</option>
+                        {% for valor, etiqueta in unidades %}
+                            <option value="{{ valor }}"
+                                {% if insumo.unidad_medida == valor %}selected{% endif %}>
+                                {{ etiqueta }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Precio de Compra ($)</label>
+                    <input type="number" name="precio_insumo" value="{{ insumo.precio_insumo }}" class="form-control" min="1" required>
+                </div>
+
+                <button type="submit" class="btn btn-warning">Actualizar Insumo</button>
+                <a href="{% url 'inventario:listar_insumos' %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+{% endblock %}
