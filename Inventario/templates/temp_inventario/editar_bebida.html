@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Bebida - FlameSystem{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white">
+        <h4 class="mb-0">🥤 Editar Bebida: {{ bebida.nombre_bebida }}</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre de la Bebida</label>
+                        <input type="text" name="nombre_bebida" value="{{ bebida.nombre_bebida }}" class="form-control" required>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Cantidad en Stock</label>
+                        <input type="number" name="cantidad_bebida" value="{{ bebida.cantidad_bebida }}" class="form-control" min="1" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Precio de Compra ($)</label>
+                        <input type="number" name="precio_compra" value="{{ bebida.precio_compra }}" class="form-control" min="1" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Precio de Venta ($)</label>
+                        <input type="number" name="precio_venta" value="{{ bebida.precio_venta }}" class="form-control" min="1" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tipo de Bebida</label>
+                        <input type="text" name="tipo_bebida" value="{{ bebida.tipo_bebida }}" class="form-control" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tamaño</label>
+                        <select name="tamaño_bebida" class="form-select" required>
+                            {% for value, label in tamaño_choices %}
+                                <option value="{{ value }}" 
+                                    {% if value == bebida.tamaño_bebida %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold">Categoría</label>
+                <select name="categoria" class="form-select">
+                    <option value="">Sin categoría</option>
+                    {% for cat in categorias %}
+                        <option value="{{ cat.id }}" 
+                            {% if cat.id == bebida.categoria_id %}selected{% endif %}>
+                            {{ cat.nombre_categoria }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{% url 'inventario:listar_bebidas' %}" class="btn btn-secondary me-md-2">Cancelar</a>
+                <button type="submit" class="btn btn-warning">Actualizar Bebida</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

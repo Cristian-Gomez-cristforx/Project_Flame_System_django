@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Listar Insumos - FlameSystem{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Insumos</h1>
+    <a href="{% url 'inventario:crear_insumo' %}" class="btn btn-flame mb-3">+ Nuevo Insumo</a>
+
+    <table class="table table-hover table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Cantidad</th>
+                <th>Precio</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for insumo in insumos %}
+            <tr>
+                <td>{{ insumo.id_insumo }}</td>
+                <td>{{ insumo.nombre_insumo }}</td>
+                <td>{{ insumo.cantidad_insumo }}</td>
+                <td>${{ insumo.precio_insumo }}</td>
+                <td>
+                    <a href="{% url 'inventario:editar_insumo' insumo.id_insumo %}" class="btn btn-warning btn-sm">Editar</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center">No hay insumos registrados</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Producto - FlameSystem{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white">
+        <h4 class="mb-0">Editar Producto: {{ producto.nombre_producto }}</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label">Nombre del Producto</label>
+                <input type="text" name="nombre_producto" value="{{ producto.nombre_producto }}"
+                       class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Precio ($)</label>
+                <input type="number" name="precio_producto" value="{{ producto.precio_producto }}"
+                       class="form-control" min="1" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Categoría</label>
+                <select name="categoria" class="form-select">
+                    <option value="">Sin categoría</option>
+                    {% for categoria in categorias %}
+                        <option value="{{ categoria.id }}"
+                            {% if categoria.id == producto.categoria_id %}selected{% endif %}>
+                            {{ categoria.nombre_categoria }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input type="checkbox" name="activo" class="form-check-input" id="activo"
+                       {% if producto.activo %}checked{% endif %}>
+                <label class="form-check-label" for="activo">Producto Activo</label>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Insumos de la Receta</label>
+                <div id="insumos-container">
+                    {% for detalle in detalles_existentes %}
+                    <div class="d-flex gap-2 mb-2 align-items-center fila-insumo">
+                        <select name="insumo_id[]" class="form-select">
+                            <option value="">-- Selecciona insumo --</option>
+                            {% for insumo in insumos %}
+                                <option value="{{ insumo.id_insumo }}"
+                                    {% if insumo.id_insumo == detalle.insumo_id %}selected{% endif %}>
+                                    {{ insumo.nombre_insumo }} ({{ insumo.get_unidad_medida_display }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <input type="number" name="cantidad_requerida[]" class="form-control"
+                               value="{{ detalle.cantidad_requerida }}"
+                               placeholder="Cantidad" min="1" style="max-width: 130px;">
+                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                onclick="this.parentElement.remove()">✕</button>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm mt-2"
+                        onclick="agregarFila()">
+                    + Agregar Insumo
+                </button>
+            </div>
+
+            <button type="submit" class="btn btn-warning">Actualizar Producto</button>
+            <a href="{% url 'inventario:listar_productos' %}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+
+{{ insumos_json|json_script:"insumos-data" }}
+
+<script>
+    const insumos = JSON.parse(document.getElementById('insumos-data').textContent);
+
+    function agregarFila() {
+        const container = document.getElementById('insumos-container');
+        const fila = document.createElement('div');
+        fila.className = 'd-flex gap-2 mb-2 align-items-center fila-insumo';
+
+        let opciones = '<option value="">-- Selecciona insumo --</option>';
+        insumos.forEach(i => {
+            opciones += `<option value="${i.id}">${i.nombre} (${i.unidad})</option>`;
+        });
+
+        fila.innerHTML = `
+            <select name="insumo_id[]" class="form-select">
+                ${opciones}
+            </select>
+            <input type="number" name="cantidad_requerida[]" class="form-control"
+                   placeholder="Cantidad" min="1" style="max-width: 130px;">
+            <button type="button" class="btn btn-outline-danger btn-sm"
+                    onclick="this.parentElement.remove()">✕</button>
+        `;
+        container.appendChild(fila);
+    }
+</script>
+{% endblock %}

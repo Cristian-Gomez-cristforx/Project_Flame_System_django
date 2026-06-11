@@ -12,10 +12,22 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import environ
+import os
+
 
 env= environ.Env()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+STATIC_URL = '/static/'
+
+# Carpetas donde Django buscará archivos estáticos
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
+# Carpeta donde se recopilarán los archivos estáticos (para producción)
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 environ.Env.read_env(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
@@ -33,12 +45,14 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'login_modify_django',           # ← Debe ir PRIMERO
     'django.contrib.admin',
-    'django.contrib.auth', #esta es la app por defecto para login, ay tinee su porpia seguridad,la usa admin tambien
+    'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
     'Gestion_Pedidos',
     'Inventario',
     'Reportes',
@@ -59,10 +73,13 @@ ROOT_URLCONF = 'flamesystem_django.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            BASE_DIR / 'templates',           #Plantillas globales
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -70,7 +87,6 @@ TEMPLATES = [
         },
     },
 ]
-
 WSGI_APPLICATION = 'flamesystem_django.wsgi.application'
 
 
@@ -119,4 +135,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',          
+]
