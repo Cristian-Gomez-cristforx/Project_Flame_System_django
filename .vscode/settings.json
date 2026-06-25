@@ -1,6 +1,7 @@
 {
     "conventionalCommits.scopes": [
         "Modulos-Apps",
-        "Fix_Migrations"
+        "Fix_Migrations",
+        "configuracion de extensiones"
     ]
 }

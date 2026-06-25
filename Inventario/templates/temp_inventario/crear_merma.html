@@ -1,0 +1,60 @@
+{% extends 'inventario/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-exclamation-triangle text-danger"></i> Registrar Nueva Merma</h2>
+    <p class="text-muted">Al registrar la merma se descontará automáticamente el stock del insumo.</p>
+
+    <div class="card shadow mt-3">
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Insumo</label>
+                        <select name="insumo" class="form-select" required>
+                            <option value="">Seleccione un insumo...</option>
+                            {% for insumo in insumos %}
+                                <option value="{{ insumo.id_insumo }}">
+                                    {{ insumo.nombre_insumo }} (Stock: {{ insumo.cantidad_insumo }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Cantidad a mermar</label>
+                        <input type="number" name="cantidad_mermada" class="form-control" min="1" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Responsable</label>
+                        <input type="text" name="responsable" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Motivo</label>
+                    <select name="motivo" class="form-select" required>
+                        <option value="Caducado">Caducado</option>
+                        <option value="Dañado">Dañado / Fisicamente inservible</option>
+                        <option value="Error preparación">Error en preparación</option>
+                        <option value="Robo / Pérdida">Robo o pérdida</option>
+                        <option value="Otro">Otro motivo</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Descripción (opcional)</label>
+                    <textarea name="descripcion" class="form-control" rows="3" placeholder="Detalle adicional del motivo..."></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-save"></i> Registrar Merma y Descontar Stock
+                    </button>
+                    <a href="{% url 'inventario:listar_mermas' %}" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

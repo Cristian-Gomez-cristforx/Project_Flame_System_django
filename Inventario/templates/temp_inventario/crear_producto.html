@@ -1,80 +1,93 @@
 {% extends 'base.html' %}
 
-{% block title %}Crear Producto - FlameSystem{% endblock %}
+{% block title %}Crear Producto{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm">
-    <div class="card-header bg-white">
-        <h4 class="mb-0">Crear Nuevo Producto</h4>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-plus-circle text-success"></i> Crear Nuevo Producto</h2>
+        <a href="{% url 'inventario:listar_productos' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Listado
+        </a>
     </div>
-    <div class="card-body">
-        <form method="POST">
-            {% csrf_token %}
 
-            <div class="mb-3">
-                <label class="form-label">Nombre del Producto</label>
-                <input type="text" name="nombre_producto" class="form-control" required>
-            </div>
+    <div class="card shadow">
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-md-8 mb-3">
+                        <label class="form-label">Nombre del Producto</label>
+                        <input type="text" name="nombre_producto" class="form-control" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Precio de Venta</label>
+                        <input type="number" name="precio_producto" class="form-control" step="1" min="1" required>
+                    </div>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Precio ($)</label>
-                <input type="number" name="precio_producto" class="form-control" min="1" required>
-            </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="activo" id="activo" checked>
+                        <label class="form-check-label" for="activo">
+                            Producto Activo
+                        </label>
+                    </div>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Categoría</label>
-                <select name="categoria" class="form-select">
-                    <option value="">Sin categoría</option>
-                    {% for categoria in categorias %}
-                        <option value="{{ categoria.id }}">{{ categoria.nombre_categoria }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+                <hr>
+                <h5 class="mb-3">Ingredientes de la Receta</h5>
+                
+                <div id="ingredientes-container">
+                    <!-- Los ingredientes se agregan dinámicamente -->
+                </div>
 
-            <div class="mb-3 form-check">
-                <input type="checkbox" name="activo" class="form-check-input" id="activo" checked>
-                <label class="form-check-label" for="activo">Producto Activo</label>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label fw-bold">Insumos de la Receta</label>
-                <div id="insumos-container"></div>
-                <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="agregarFila()">
-                    + Agregar Insumo
+                <button type="button" class="btn btn-outline-primary mb-3" onclick="agregarIngrediente()">
+                    <i class="fas fa-plus"></i> Agregar Ingrediente
                 </button>
-            </div>
 
-            <button type="submit" class="btn btn-flame">Guardar Producto</button>
-            <a href="{% url 'inventario:listar_productos' %}" class="btn btn-secondary">Cancelar</a>
-        </form>
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Guardar Producto
+                    </button>
+                    <a href="{% url 'inventario:listar_productos' %}" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
-{{ insumos_json|json_script:"insumos-data" }}
-
 <script>
-    const insumos = JSON.parse(document.getElementById('insumos-data').textContent);
-
-    function agregarFila() {
-        const container = document.getElementById('insumos-container');
-        const fila = document.createElement('div');
-        fila.className = 'd-flex gap-2 mb-2 align-items-center fila-insumo';
-
-        let opciones = '<option value="">-- Selecciona insumo --</option>';
-        insumos.forEach(i => {
-            opciones += `<option value="${i.id}">${i.nombre} (${i.unidad})</option>`;
-        });
-
-        fila.innerHTML = `
-            <select name="insumo_id[]" class="form-select" required>
-                ${opciones}
-            </select>
-            <input type="number" name="cantidad_requerida[]" class="form-control"
-                   placeholder="Cantidad" min="1" style="max-width: 130px;" required>
-            <button type="button" class="btn btn-outline-danger btn-sm"
-                    onclick="this.parentElement.remove()">✕</button>
+    function agregarIngrediente() {
+        const container = document.getElementById('ingredientes-container');
+        
+        const div = document.createElement('div');
+        div.className = 'row mb-2 ingrediente-row';
+        div.innerHTML = `
+            <div class="col-md-6">
+                <select name="insumo_id[]" class="form-select" required>
+                    <option value="">Seleccione insumo...</option>
+                    {% for insumo in insumos %}
+                        <option value="{{ insumo.id_insumo }}">{{ insumo.nombre_insumo }} ({{ insumo.get_unidad_medida_display }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <input type="number" name="cantidad_requerida[]" class="form-control" placeholder="Cantidad" min="1" required>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.ingrediente-row').remove()">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
         `;
-        container.appendChild(fila);
+        container.appendChild(div);
+    }
+
+
+    window.onload = function() {
+        agregarIngrediente();
     }
 </script>
 {% endblock %}
