@@ -1,81 +1,59 @@
 {% extends 'base.html' %}
 
-{% block title %}Crear Bebida - FlameSystem{% endblock %}
+{% block title %}Crear Bebida{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm">
-    <div class="card-header bg-white">
-        <h4 class="mb-0"> Crear Nueva Bebida</h4>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-plus-circle text-info"></i> Crear Nueva Bebida</h2>
+        <a href="{% url 'inventario:listar_bebidas' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Listado
+        </a>
     </div>
-    <div class="card-body">
-        <form method="POST">
-            {% csrf_token %}
 
-            <div class="row">
-                <div class="col-md-8">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Nombre de la Bebida</label>
+    <div class="card shadow">
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nombre de la Bebida</label>
                         <input type="text" name="nombre_bebida" class="form-control" required>
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Cantidad en Stock</label>
-                        <input type="number" name="cantidad_bebida" class="form-control" min="1" required>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Precio de Compra ($)</label>
-                        <input type="number" name="precio_compra" class="form-control" min="1" required>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Precio de Venta ($)</label>
-                        <input type="number" name="precio_venta" class="form-control" min="1" required>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Tipo de Bebida</label>
-                        <input type="text" name="tipo_bebida" class="form-control" placeholder="Ej: Gaseosa, Jugo, Energizante" required>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Tamaño</label>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Tamaño</label>
                         <select name="tamaño_bebida" class="form-select" required>
-                            <option value="">Seleccionar tamaño...</option>
                             {% for value, label in tamaño_choices %}
                                 <option value="{{ value }}">{{ label }}</option>
                             {% endfor %}
                         </select>
                     </div>
                 </div>
-            </div>
 
-            <div class="mb-4">
-                <label class="form-label fw-bold">Categoría</label>
-                <select name="categoria" class="form-select">
-                    <option value="">Sin categoría</option>
-                    {% for cat in categorias %}
-                        <option value="{{ cat.id }}">{{ cat.nombre_categoria }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Cantidad en Stock</label>
+                        <input type="number" name="cantidad_bebida" class="form-control" min="1" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Precio de Compra</label>
+                        <input type="number" name="precio_compra" class="form-control" min="1" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Precio de Venta</label>
+                        <input type="number" name="precio_venta" class="form-control" min="1" required>
+                    </div>
+                </div>
 
-            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                <a href="{% url 'inventario:listar_bebidas' %}" class="btn btn-secondary me-md-2">Cancelar</a>
-                <button type="submit" class="btn btn-flame">Guardar Bebida</button>
-            </div>
-        </form>
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-info">
+                        <i class="fas fa-save"></i> Guardar Bebida
+                    </button>
+                    <a href="{% url 'inventario:listar_bebidas' %}" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

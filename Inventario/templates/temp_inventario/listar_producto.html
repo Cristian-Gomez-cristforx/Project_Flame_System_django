@@ -1,60 +1,80 @@
 {% extends 'base.html' %}
 
-{% block title %}Listar Productos - FlameSystem{% endblock %}
+{% block title %}Productos - Inventario{% endblock %}
 
 {% block content %}
-    <h1 class="mb-4">Productos</h1>
-    <a href="{% url 'inventario:crear_producto' %}" class="btn btn-flame mb-3">+ Nuevo Producto</a>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-boxes text-success"></i> Listado de Productos</h2>
+        <a href="{% url 'inventario:crear_producto' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Nuevo Producto
+        </a>
+    </div>
 
-    <table class="table table-hover table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Precio</th>
-                <th>Categoría</th>
-                <th>Estado</th>           <!-- ✅ nuevo -->
-                <th>Puede preparar</th>   <!-- ✅ nuevo -->
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in productos_info %}
-            <tr>
-                <td>{{ item.producto.id_producto }}</td>
-                <td>{{ item.producto.nombre_producto }}</td>
-                <td>${{ item.producto.precio_producto }}</td>
-                <td>{{ item.producto.categoria|default:"Sin categoría" }}</td>
-
-                <!-- ✅ Columna Activo -->
-                <td>
-                    {% if item.producto.activo %}
-                        <span class="badge bg-success">Activo</span>
-                    {% else %}
-                        <span class="badge bg-danger">Inactivo</span>
-                    {% endif %}
-                </td>
-                
-                <td>
-                    {% if item.tiene_receta %}
-                        {% if item.unidades_posibles > 0 %}
-                            <span class="badge bg-primary">{{ item.unidades_posibles }} unidades</span>
-                        {% else %}
-                            <span class="badge bg-warning text-dark">Sin stock</span>
-                        {% endif %}
-                    {% else %}
-                        <span class="badge bg-secondary">Sin receta</span>
-                    {% endif %}
-                </td>
-
-                <td>
-                    <a href="{% url 'inventario:editar_producto' item.producto.id_producto %}" 
-                       class="btn btn-warning btn-sm">Editar</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="7" class="text-center">No hay productos registrados</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Categoría</th>
+                            <th>Precio Venta</th>
+                            <th>Estado</th>
+                            <th>Puede Preparar</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in productos_info %}
+                        <tr>
+                            <td>{{ item.producto.id_producto }}</td>
+                            <td><strong>{{ item.producto.nombre_producto }}</strong></td>
+                            <td>
+                                {% if item.producto.categoria %}
+                                    <span class="badge bg-primary">{{ item.producto.categoria.nombre_categoria }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Sin categoría</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold text-success">${{ item.producto.precio_producto|floatformat:0 }}</td>
+                            <td>
+                                {% if item.producto.activo %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.tiene_receta %}
+                                    {% if item.unidades_posibles > 0 %}
+                                        <span class="badge bg-info">{{ item.unidades_posibles }} unidades</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Sin stock suficiente</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-secondary">Sin receta</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'inventario:editar_producto' item.producto.id_producto %}" 
+                                   class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                No hay productos registrados aún.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

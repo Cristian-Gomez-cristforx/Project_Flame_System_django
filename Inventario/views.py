@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from .models import Insumo, Producto, Bebida, Categoria, RecetaProducto, DetalleReceta
+from .models import Insumo, Producto, Bebida, RecetaProducto, DetalleReceta, Merma
 import json
 
 
@@ -40,8 +40,8 @@ def editar_insumo(request, id):
     if request.method == 'POST':
         try:
             insumo_obj.cantidad_insumo = request.POST['cantidad_insumo']
-            insumo_obj.unidad_medida = request.POST['unidad_medida']
-            insumo_obj.precio_insumo = request.POST['precio_insumo']
+            insumo_obj.unidad_medida   = request.POST['unidad_medida']
+            insumo_obj.precio_insumo   = request.POST['precio_insumo']
             insumo_obj.full_clean()
             insumo_obj.save()
             messages.success(request, f'Insumo "{insumo_obj.nombre_insumo}" actualizado.')
@@ -84,20 +84,18 @@ def crear_producto(request):
 
     if request.method == 'POST':
         try:
-            categoria_id = request.POST.get('categoria')
-            categoria_obj = Categoria.objects.get(id=categoria_id) if categoria_id else None
-
+           
             nuevo_producto = Producto(
                 nombre_producto=request.POST['nombre_producto'],
                 precio_producto=request.POST['precio_producto'],
                 activo=request.POST.get('activo') == 'on',
-                categoria=categoria_obj
             )
             nuevo_producto.full_clean()
             nuevo_producto.save()
 
+            # Lógica de receta
             insumo_ids = request.POST.getlist('insumo_id[]')
-            cantidades = request.POST.getlist('cantidad_requerida[]')
+            cantidades  = request.POST.getlist('cantidad_requerida[]')
 
             if any(i for i in insumo_ids if i):
                 receta = RecetaProducto.objects.create(
@@ -115,48 +113,36 @@ def crear_producto(request):
             messages.success(request, f'Producto "{nuevo_producto.nombre_producto}" creado correctamente.')
             return redirect('inventario:listar_productos')
 
-        except Categoria.DoesNotExist:
-            messages.error(request, 'La categoría seleccionada no existe.')
         except Exception as e:
             messages.error(request, f'Error al crear producto: {str(e)}')
 
-    insumos_json = json.dumps([
-        {'id': i.id_insumo, 'nombre': i.nombre_insumo, 'unidad': i.get_unidad_medida_display()}
-        for i in insumos
-    ])
-    categorias = Categoria.objects.all().order_by('nombre_categoria')
     return render(request, 'temp_inventario/crear_producto.html', {
-        'categorias': categorias,
-        'insumos': insumos,
-        'insumos_json': insumos_json
+        'insumos': insumos
     })
 
 
 def editar_producto(request, id):
     producto_obj = get_object_or_404(Producto, id_producto=id)
-    insumos = Insumo.objects.all().order_by('nombre_insumo')
+    insumos      = Insumo.objects.all().order_by('nombre_insumo')
 
     try:
-        receta_existente = producto_obj.receta
+        receta_existente  = producto_obj.receta
         detalles_existentes = receta_existente.detalles.all()
     except RecetaProducto.DoesNotExist:
-        receta_existente = None
+        receta_existente    = None
         detalles_existentes = []
 
     if request.method == 'POST':
         try:
-            categoria_id = request.POST.get('categoria')
-            categoria_obj = Categoria.objects.get(id=categoria_id) if categoria_id else None
 
-            producto_obj.nombre_producto = request.POST['nombre_producto']
-            producto_obj.precio_producto = request.POST['precio_producto']
-            producto_obj.activo = request.POST.get('activo') == 'on'
-            producto_obj.categoria = categoria_obj
+            producto_obj.nombre_producto  = request.POST['nombre_producto']
+            producto_obj.precio_producto  = request.POST['precio_producto']
+            producto_obj.activo           = request.POST.get('activo') == 'on'
             producto_obj.full_clean()
             producto_obj.save()
 
             insumo_ids = request.POST.getlist('insumo_id[]')
-            cantidades = request.POST.getlist('cantidad_requerida[]')
+            cantidades  = request.POST.getlist('cantidad_requerida[]')
 
             if any(i for i in insumo_ids if i):
                 if receta_existente:
@@ -188,13 +174,14 @@ def editar_producto(request, id):
         {'id': i.id_insumo, 'nombre': i.nombre_insumo, 'unidad': i.get_unidad_medida_display()}
         for i in insumos
     ])
-    categorias = Categoria.objects.all().order_by('nombre_categoria')
+
+  
+
     return render(request, 'temp_inventario/editar_producto.html', {
-        'producto': producto_obj,
-        'categorias': categorias,
-        'insumos': insumos,
-        'insumos_json': insumos_json,
-        'detalles_existentes': detalles_existentes
+        'producto':             producto_obj,
+        'insumos':              insumos,
+        'insumos_json':         insumos_json,
+        'detalles_existentes':  detalles_existentes,
     })
 
 
@@ -207,26 +194,26 @@ def listar_bebidas(request):
 def crear_bebida(request):
     if request.method == 'POST':
         try:
-            categoria_id = request.POST.get('categoria')
-            categoria_obj = Categoria.objects.get(id=categoria_id) if categoria_id else None
+
             nueva_bebida = Bebida(
                 nombre_bebida=request.POST['nombre_bebida'],
                 cantidad_bebida=request.POST['cantidad_bebida'],
                 precio_compra=request.POST['precio_compra'],
                 precio_venta=request.POST['precio_venta'],
-                tipo_bebida=request.POST['tipo_bebida'],
                 tamaño_bebida=request.POST['tamaño_bebida'],
-                categoria=categoria_obj
             )
             nueva_bebida.full_clean()
             nueva_bebida.save()
+
             messages.success(request, f'Bebida "{nueva_bebida.nombre_bebida}" creada correctamente.')
             return redirect('inventario:listar_bebidas')
+
         except Exception as e:
             messages.error(request, f'Error al crear bebida: {str(e)}')
 
-    categorias = Categoria.objects.all().order_by('nombre_categoria')
-    return render(request, 'temp_inventario/crear_bebida.html', {'categorias': categorias})
+    return render(request, 'temp_inventario/crear_bebida.html', {
+        'tamaño_choices': Bebida.TAMAÑO_CHOICES
+    })
 
 
 def editar_bebida(request, id):
@@ -234,27 +221,60 @@ def editar_bebida(request, id):
 
     if request.method == 'POST':
         try:
-            categoria_id = request.POST.get('categoria')
-            categoria_obj = Categoria.objects.get(id=categoria_id) if categoria_id else None
-            bebida_obj.nombre_bebida = request.POST.get('nombre_bebida', bebida_obj.nombre_bebida)
+
+            bebida_obj.nombre_bebida   = request.POST.get('nombre_bebida',   bebida_obj.nombre_bebida)
             bebida_obj.cantidad_bebida = request.POST.get('cantidad_bebida', bebida_obj.cantidad_bebida)
-            bebida_obj.precio_compra = request.POST['precio_compra']
-            bebida_obj.precio_venta = request.POST['precio_venta']
-            bebida_obj.tipo_bebida = request.POST.get('tipo_bebida', bebida_obj.tipo_bebida)
-            bebida_obj.tamaño_bebida = request.POST.get('tamaño_bebida', bebida_obj.tamaño_bebida)
-            bebida_obj.categoria = categoria_obj
+            bebida_obj.precio_compra   = request.POST['precio_compra']
+            bebida_obj.precio_venta    = request.POST['precio_venta']
+            bebida_obj.tamaño_bebida   = request.POST.get('tamaño_bebida',   bebida_obj.tamaño_bebida)
             bebida_obj.full_clean()
             bebida_obj.save()
+
             messages.success(request, f'Bebida "{bebida_obj.nombre_bebida}" actualizada correctamente.')
             return redirect('inventario:listar_bebidas')
-        except Categoria.DoesNotExist:
-            messages.error(request, 'La categoría seleccionada no existe.')
+
         except Exception as e:
             messages.error(request, f'Error al actualizar bebida: {str(e)}')
 
-    categorias = Categoria.objects.all().order_by('nombre_categoria')
+   
+
     return render(request, 'temp_inventario/editar_bebida.html', {
-        'bebida': bebida_obj,
-        'categorias': categorias,
-        'tamaño_choices': Bebida.TAMAÑO_CHOICES
+        'bebida':         bebida_obj,
+        'tamaño_choices': Bebida.TAMAÑO_CHOICES,
     })
+
+
+# ====================== MERMAS ======================
+def listar_mermas(request):
+    mermas = Merma.objects.all().order_by('-fecha_merma')
+    return render(request, 'temp_inventario/listar_mermas.html', {'mermas': mermas})
+
+
+def crear_merma(request):
+    if request.method == 'POST':
+        try:
+            insumo_id  = request.POST.get('insumo')
+            insumo_obj = Insumo.objects.get(id_insumo=insumo_id)
+
+            nueva_merma = Merma(
+                insumo=insumo_obj,
+                cantidad_insumo_dañado=request.POST['cantidad_insumo_dañado'],
+                motivo=request.POST['motivo'],
+                descripcion=request.POST.get('descripcion', ''),
+                responsable=request.POST['responsable'],
+            )
+            nueva_merma.full_clean()
+            nueva_merma.save()
+
+            messages.success(
+                request,
+                f'Merma registrada correctamente. Se descontaron {nueva_merma.cantidad_mermada} '
+                f'unidades de {insumo_obj.nombre_insumo}.'
+            )
+            return redirect('inventario:listar_mermas')
+
+        except Exception as e:
+            messages.error(request, f'Error al registrar merma: {str(e)}')
+
+    insumos = Insumo.objects.all().order_by('nombre_insumo')
+    return render(request, 'temp_inventario/crear_merma.html', {'insumos': insumos})

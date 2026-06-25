@@ -23,4 +23,8 @@ urlpatterns = [
     path('bebidas/', views.listar_bebidas, name='listar_bebidas'),
     path('bebidas/crear/', views.crear_bebida, name='crear_bebida'),
     path('bebidas/editar/<int:id>/', views.editar_bebida, name='editar_bebida'),
+
+    # ====================== MERMAS ======================
+    path('mermas/', views.listar_mermas, name='listar_mermas'),
+    path('mermas/crear/', views.crear_merma, name='crear_merma'),
 ]
