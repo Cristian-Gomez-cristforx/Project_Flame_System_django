@@ -8,3 +8,6 @@ __pycache__/
 # base de datos
 db.sqlite3
 .env
+
+#ignorar archivos de intelleji
+/.idea
