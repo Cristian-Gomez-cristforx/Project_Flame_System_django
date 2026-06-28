@@ -19,57 +19,34 @@
                 <div class="row">
                     <div class="col-md-8 mb-3">
                         <label class="form-label">Nombre del Producto</label>
-                        <input type="text" name="nombre_producto" class="form-control"
-                               value="{{ producto.nombre_producto }}" required>
+                        <input type="text" name="nombre_producto" class="form-control" value="{{ producto.nombre_producto }}" required>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Venta</label>
-                        <input type="number" name="precio_producto" class="form-control"
-                               value="{{ producto.precio_producto }}" step="1" min="1" required>
+                        <input type="number" name="precio_producto" class="form-control" value="{{ producto.precio_producto }}" min="1" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">Categoría</label>
+                        <select name="categoria" class="form-select">
+                            <option value="">-- Seleccionar categoría (opcional) --</option>
+                            {% for cat in categorias %}
+                                <option value="{{ cat.id }}" {% if producto.categoria_id == cat.id %}selected{% endif %}>
+                                    {{ cat.nombre_categoria }}
+                                </option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="activo" id="activo"
-                               {% if producto.activo %}checked{% endif %}>
+                        <input class="form-check-input" type="checkbox" name="activo" id="activo" {% if producto.activo %}checked{% endif %}>
                         <label class="form-check-label" for="activo">Producto Activo</label>
                     </div>
                 </div>
-
-                <hr>
-                <h5 class="mb-3">Ingredientes de la Receta</h5>
-
-                <div id="ingredientes-container">
-                    {% for detalle in detalles_existentes %}
-                    <div class="row mb-2 ingrediente-row">
-                        <div class="col-md-6">
-                            <select name="insumo_id[]" class="form-select" required>
-                                {% for insumo in insumos %}
-                                    <option value="{{ insumo.id_insumo }}"
-                                        {% if insumo.id_insumo == detalle.insumo.id_insumo %}selected{% endif %}>
-                                        {{ insumo.nombre_insumo }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <input type="number" name="cantidad_requerida[]" class="form-control"
-                                   value="{{ detalle.cantidad_requerida }}" min="1" required>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="button" class="btn btn-danger btn-sm"
-                                    onclick="this.closest('.ingrediente-row').remove()">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <button type="button" class="btn btn-outline-primary mb-3" onclick="agregarIngrediente()">
-                    <i class="fas fa-plus"></i> Agregar Ingrediente
-                </button>
 
                 <div class="d-flex gap-2 mt-4">
                     <button type="submit" class="btn btn-warning">
@@ -81,39 +58,4 @@
         </div>
     </div>
 </div>
-
-<script>
-    const insumos = JSON.parse(document.getElementById('insumos-data').textContent);
-
-    function agregarIngrediente() {
-        const container = document.getElementById('ingredientes-container');
-        const div = document.createElement('div');
-        div.className = 'row mb-2 ingrediente-row';
-
-        const options = insumos.map(i =>
-            `<option value="${i.id}">${i.nombre} (${i.unidad})</option>`
-        ).join('');
-
-        div.innerHTML = `
-            <div class="col-md-6">
-                <select name="insumo_id[]" class="form-select" required>
-                    <option value="">Seleccione insumo...</option>
-                    ${options}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <input type="number" name="cantidad_requerida[]" class="form-control"
-                       placeholder="Cantidad" min="1" required>
-            </div>
-            <div class="col-md-2">
-                <button type="button" class="btn btn-danger btn-sm"
-                        onclick="this.closest('.ingrediente-row').remove()">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `;
-        container.appendChild(div);
-    }
-</script>
-{{ insumos_json|json_script:"insumos-data" }}
 {% endblock %}

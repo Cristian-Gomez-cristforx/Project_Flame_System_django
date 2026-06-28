@@ -1,45 +1,87 @@
 {% extends 'base.html' %}
 
-{% block title %}Crear Insumo - FlameSystem{% endblock %}
+{% block title %}Crear Insumo{% endblock %}
 
 {% block content %}
-    <div class="card shadow-sm">
-        <div class="card-header bg-white">
-            <h4 class="mb-0">Crear Nuevo Insumo</h4>
-        </div>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-plus-circle text-primary"></i> Crear Nuevo Insumo</h2>
+        <a href="{% url 'inventario:listar_insumos' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Listado
+        </a>
+    </div>
+
+    <div class="card shadow">
         <div class="card-body">
             <form method="POST">
                 {% csrf_token %}
                 
-                <div class="mb-3">
-                    <label class="form-label">Nombre del Insumo</label>
-                    <input type="text" name="nombre_insumo" class="form-control" required>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">Nombre del Insumo</label>
+                        <input type="text" name="nombre_insumo" class="form-control" required>
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Cantidad</label>
-                    <input type="number" name="cantidad_insumo" class="form-control" min="1" required>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Cantidad</label>
+                        <input type="number" name="cantidad_insumo" class="form-control" min="1" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Unidad de Medida</label>
+                        <select name="unidad_medida" class="form-select" required>
+                            {% for value, label in unidades %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Precio</label>
+                        <input type="number" name="precio_insumo" class="form-control" min="1" required>
+                    </div>
                 </div>
 
-                <!-- NUEVO: Unidad de medida -->
-                <div class="mb-3">
-                    <label class="form-label">Unidad de Medida</label>
-                    <select name="unidad_medida" class="form-select" required>
-                        <option value="" disabled selected>-- Selecciona una unidad --</option>
-                        {% for valor, etiqueta in unidades %}
-                            <option value="{{ valor }}">{{ etiqueta }}</option>
-                        {% endfor %}
-                    </select>
+                
+
+                <div class="row">
+                    <div class="col-md-6 mb-3"></div>
+                         <label class="form-label">Categoria</label>
+                         <select name="categoria" class="form-select">
+                             <option value="">-- Seleccionar categoria (opcional) --</option>
+
+
+                             {% for categoria in categorias %}
+                                 <option value="{{ cat.id }}" >
+                                     {{categori.nombre_categoria}}
+                                 </option>
+                             {% endfor %}
+                         </select>
+                    </div>
+                    <div class="col-md-6 mb-3"> 
+                        <label class="form-label">
+                            Nueva categoría (opcional)
+                        </label>
+
+                        <input 
+                            type="text"
+                            name="nueva_categoria"
+                            class="form-control"
+                            placeholder="Escriba una nueva categoría">
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Precio de Compra ($)</label>
-                    <input type="number" name="precio_insumo" class="form-control" min="1" required>
-                </div>
 
-                <button type="submit" class="btn btn-flame">Guardar Insumo</button>
-                <a href="{% url 'inventario:listar_insumos' %}" class="btn btn-secondary">Cancelar</a>
+
+
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Guardar Insumo
+                    </button>
+                    <a href="{% url 'inventario:listar_insumos' %}" class="btn btn-secondary">Cancelar</a>
+                </div>
             </form>
         </div>
     </div>
+</div>
 {% endblock %}
