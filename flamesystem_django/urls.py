@@ -25,3 +25,7 @@ urlpatterns = [
     path('inventario/', include('Inventario.urls', namespace='inventario')),
     path('', lambda r: redirect('/admin/login/?next=/admin/'), name='home'),
 ]
+
+admin.site.site_header = "FlameSystem"
+admin.site.site_title = "Panel de Inventario"
+admin.site.index_title = "Administración de Productos y Bebidas"
