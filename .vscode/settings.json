@@ -2,6 +2,9 @@
     "conventionalCommits.scopes": [
         "Modulos-Apps",
         "Fix_Migrations",
-        "configuracion de extensiones"
+        "configuracion de extensiones",
+        "Archivos_front",
+        "Nuevas_migraciones",
+        "Config_vscode"
     ]
 }
