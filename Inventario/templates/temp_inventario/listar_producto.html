@@ -6,9 +6,30 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-boxes text-success"></i> Listado de Productos</h2>
-        <a href="{% url 'inventario:crear_producto' %}" class="btn btn-success">
-            <i class="fas fa-plus"></i> Nuevo Producto
-        </a>
+        
+        <div>
+            <a href="{% url 'inventario:crear_producto' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Nuevo Producto
+            </a>
+            <!-- Botón para crear categoría de Producto -->
+            <a href="{% url 'admin:Inventario_categoria_add' %}?tipo=PRODUCTO" class="btn btn-outline-success ms-2">
+                <i class="fas fa-tags"></i> Crear Categoría de Producto
+            </a>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <form method="GET" class="d-flex gap-2">
+            <input type="text" name="q" class="form-control" 
+                   placeholder="Buscar por nombre o categoría..." 
+                   value="{{ request.GET.q }}">
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="fas fa-search"></i> Buscar
+            </button>
+            {% if request.GET.q %}
+                <a href="{% url 'inventario:listar_productos' %}" class="btn btn-secondary">Limpiar</a>
+            {% endif %}
+        </form>
     </div>
 
     <div class="card shadow">
@@ -19,7 +40,7 @@
                         <tr>
                             <th>ID</th>
                             <th>Nombre</th>
-                            <th>Categoría</th>
+                            <th>Nombre Categoría</th>
                             <th>Precio Venta</th>
                             <th>Estado</th>
                             <th>Puede Preparar</th>
@@ -33,7 +54,7 @@
                             <td><strong>{{ item.producto.nombre_producto }}</strong></td>
                             <td>
                                 {% if item.producto.categoria %}
-                                    <span class="badge bg-primary">{{ item.producto.categoria.nombre_categoria }}</span>
+                                    <span class="badge bg-success">{{ item.producto.categoria.nombre_categoria }}</span>
                                 {% else %}
                                     <span class="badge bg-secondary">Sin categoría</span>
                                 {% endif %}
@@ -58,8 +79,7 @@
                                 {% endif %}
                             </td>
                             <td class="text-center">
-                                <a href="{% url 'inventario:editar_producto' item.producto.id_producto %}" 
-                                   class="btn btn-sm btn-warning">
+                                <a href="{% url 'inventario:editar_producto' item.producto.id_producto %}" class="btn btn-sm btn-warning">
                                     <i class="fas fa-edit"></i> Editar
                                 </a>
                             </td>

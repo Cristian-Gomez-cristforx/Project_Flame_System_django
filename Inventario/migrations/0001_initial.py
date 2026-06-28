@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Categorías',
                 'ordering': ['tipo', 'nombre_categoria'],
             },
-        ),
+    ),
         migrations.CreateModel(
             name='Insumo',
             fields=[

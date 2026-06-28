@@ -1,35 +1,85 @@
 {% extends 'base.html' %}
 
-{% block title %}Listar Insumos - FlameSystem{% endblock %}
+{% block title %}Insumos - Inventario{% endblock %}
 
 {% block content %}
-    <h1 class="mb-4">Insumos</h1>
-    <a href="{% url 'inventario:crear_insumo' %}" class="btn btn-flame mb-3">+ Nuevo Insumo</a>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-boxes text-primary"></i> Listado de Insumos</h2>
+        
+        <div>
+            <a href="{% url 'inventario:crear_insumo' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nuevo Insumo
+            </a>
+            <!-- Botón para crear categoría de Insumo -->
+            <a href="{% url 'admin:Inventario_categoria_add' %}?tipo=INSUMO" class="btn btn-outline-primary ms-2">
+                <i class="fas fa-tags"></i> Crear Categoría de Insumo
+            </a>
+        </div>
+    </div>
 
-    <table class="table table-hover table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Cantidad</th>
-                <th>Precio</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for insumo in insumos %}
-            <tr>
-                <td>{{ insumo.id_insumo }}</td>
-                <td>{{ insumo.nombre_insumo }}</td>
-                <td>{{ insumo.cantidad_insumo }}</td>
-                <td>${{ insumo.precio_insumo }}</td>
-                <td>
-                    <a href="{% url 'inventario:editar_insumo' insumo.id_insumo %}" class="btn btn-warning btn-sm">Editar</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="5" class="text-center">No hay insumos registrados</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- BARRA DE BÚSQUEDA -->
+    <div class="mb-3">
+        <form method="GET" class="d-flex gap-2">
+            <input type="text" name="q" class="form-control" 
+                   placeholder="Buscar por nombre o categoría..." 
+                   value="{{ request.GET.q }}">
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="fas fa-search"></i> Buscar
+            </button>
+            {% if request.GET.q %}
+                <a href="{% url 'inventario:listar_insumos' %}" class="btn btn-secondary">Limpiar</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Nombre Categoría</th>
+                            <th>Cantidad</th>
+                            <th>Unidad</th>
+                            <th>Precio</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for insumo in insumos %}
+                        <tr>
+                            <td>{{ insumo.id_insumo }}</td>
+                            <td><strong>{{ insumo.nombre_insumo }}</strong></td>
+                            <td>
+                                {% if insumo.categoria %}
+                                    <span class="badge bg-primary">{{ insumo.categoria.nombre_categoria }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Sin categoría</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold">{{ insumo.cantidad_insumo }}</td>
+                            <td>{{ insumo.get_unidad_medida_display }}</td>
+                            <td class="fw-bold text-success">${{ insumo.precio_insumo|floatformat:0 }}</td>
+                            <td class="text-center">
+                                <a href="{% url 'inventario:editar_insumo' insumo.id_insumo %}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                No hay insumos registrados aún.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

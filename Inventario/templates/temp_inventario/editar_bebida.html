@@ -27,7 +27,7 @@
                         <select name="tamaño_bebida" class="form-select" required>
                             {% for value, label in tamaño_choices %}
                                 <option value="{{ value }}"
-                                    {% if value = bebida.tamaño_bebida %}selected{% endif %}>
+                                    {% if value == bebida.tamaño_bebida %}selected{% endif %}>
                                     {{ label }}
                                 </option>
                             {% endfor %}
