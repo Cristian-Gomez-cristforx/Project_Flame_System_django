@@ -18,6 +18,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
 
@@ -26,6 +28,8 @@ urlpatterns = [
     path('', lambda r: redirect('/admin/login/?next=/admin/'), name='home'),
 ]
 
-admin.site.site_header = "FlameSystem"
-admin.site.site_title = "Panel de Inventario"
-admin.site.index_title = "Administración de Productos y Bebidas"
+if settings.DEBUG:
+    urlpatterns += static(
+        settings.MEDIA_URL,
+        document_root=settings.MEDIA_ROOT
+    )
