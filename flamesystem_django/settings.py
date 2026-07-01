@@ -19,15 +19,6 @@ env= environ.Env()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-STATIC_URL = '/static/'
-
-# Carpetas donde Django buscará archivos estáticos
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
-
-# Carpeta donde se recopilarán los archivos estáticos (para producción)
-STATIC_ROOT = BASE_DIR / 'staticfiles'
 environ.Env.read_env(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
@@ -45,6 +36,8 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'admin_interface',
+    'colorfield',
     'login_modify_django',           
     'django.contrib.admin',
     'django.contrib.auth',
@@ -56,7 +49,10 @@ INSTALLED_APPS = [
     'Gestion_Pedidos',
     'Inventario',
     'Reportes',
+
 ]
+
+X_FRAME_OPTIONS='SAMEORIGIN'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -140,3 +136,6 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',          
 ]
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
