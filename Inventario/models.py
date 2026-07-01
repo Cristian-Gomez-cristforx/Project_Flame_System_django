@@ -1,7 +1,9 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
+from math import ceil
+
 
 def validar_solo_letras(valor):
     if not valor.replace(' ', '').isalpha():
@@ -23,6 +25,7 @@ class Categoria(models.Model):
         validators=[validar_solo_letras],
         verbose_name="Nombre de la Categoría"
     )
+    
     tipo = models.CharField(
         max_length=20,
         choices=Tipo.choices,
@@ -63,7 +66,7 @@ class Insumo(models.Model):
 
     id_insumo       = models.AutoField(primary_key=True)
     nombre_insumo   = models.CharField(max_length=100, validators=[validar_solo_letras], unique=True)
-    cantidad_insumo = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    cantidad_insumo = models.PositiveIntegerField(validators=[MinValueValidator(0)])
     unidad_medida   = models.CharField(max_length=20, choices=UNIDAD_CHOICES, default='g')
     precio_insumo   = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1)])
     categoria       = models.ForeignKey(
@@ -72,7 +75,11 @@ class Insumo(models.Model):
         
         related_name='insumos'
     )
+    
+    precio_gramo    = models.DecimalField(max_digits=7, decimal_places=2, default=0, verbose_name="Precio Gramo")
     stock_maximo    = models.PositiveIntegerField(default=0, editable=False)
+    cantidad_a_agregar = models.DecimalField(max_digits=8, decimal_places=2,null=True, blank=True,default=0,validators=[MinValueValidator(0)])
+    
 
     class Meta:
         verbose_name = "Insumo"
@@ -80,13 +87,90 @@ class Insumo(models.Model):
         ordering = ['nombre_insumo']
 
     def __str__(self):
-        return f"{self.nombre_insumo} | {self.cantidad_insumo} {self.get_unidad_medida_display()}"
+        return f"{self.nombre_insumo} | {self.cantidad_insumo} {self.get_unidad_medida_display()} | ${self.precio_gramo:,.0f}".replace(',','.')
 
+    
+    def clean(self):
+        # Si el campo está vacío no hacer nada
+        if not self.cantidad_a_agregar:
+            return
+
+        # Validar que no sea negativo
+        if self.cantidad_a_agregar < 0:
+            raise ValidationError({
+                'cantidad_a_agregar':
+                'La cantidad a agregar no puede ser negativa.'
+            })
+
+        # Solo validar si ya existe el objeto
+        if self.pk:
+
+            insumo_original = Insumo.objects.get(pk=self.pk)
+
+            if self.cantidad_insumo != insumo_original.cantidad_insumo:
+                raise ValidationError({
+                    f'No puedes añadir {self.cantidad_a_agregar}|{self.unidad_medida} a la misma vez que quieres modficar la cantidad  actual de'
+                        f'{insumo_original.cantidad_insumo}|{self.unidad_medida} ¡Elige la opción correcto!.'
+                })
+    
     def save(self, *args, **kwargs):
+        # Ejecutar validaciones
+        self.full_clean()
+
+        if self.pk:
+
+            insumo_original = Insumo.objects.get(pk=self.pk)
+
+            # Si agrega stock adicional
+            if self.cantidad_a_agregar and self.cantidad_a_agregar > 0:
+
+                precio_por_gramo = (
+                    Decimal(insumo_original.precio_insumo)
+                    / Decimal(insumo_original.cantidad_insumo)
+                ).quantize(
+                    Decimal("0.01"),
+                    rounding=ROUND_HALF_UP
+                )
+
+                costo_agregado = (
+                    Decimal(self.cantidad_a_agregar)
+                    * precio_por_gramo
+                )
+
+                # Sumar al stock actual de la BD
+                self.cantidad_insumo = (
+                    insumo_original.cantidad_insumo
+                    + self.cantidad_a_agregar
+                )
+
+                # Sumar el costo adicional
+                self.precio_insumo = (
+                    insumo_original.precio_insumo
+                    + costo_agregado
+                ).quantize(
+                    Decimal("1"),
+                    rounding=ROUND_HALF_UP
+                )
+
+                # Reiniciar el campo temporal
+                self.cantidad_a_agregar = 0
+
+        # Actualizar stock máximo
         if self.cantidad_insumo > self.stock_maximo:
             self.stock_maximo = self.cantidad_insumo
-        super().save(*args, **kwargs)
 
+        # Actualizar precio por gramo
+        if self.cantidad_insumo > 0:
+            self.precio_gramo = (
+                self.precio_insumo / self.cantidad_insumo
+            )
+        else:
+            self.precio_gramo = 0
+            
+        
+
+        super().save(*args, **kwargs)
+        
     @property
     def bajo_stock_30(self):
         if self.stock_maximo > 0:
@@ -129,17 +213,18 @@ class Bebida(models.Model):
         ('350ml', '350 ml'), ('500ml', '500 ml'), ('1L', '1 Litro'),
         ('1.5L', '1.5 Litros'), ('2L', '2 Litros'), ('Personal', 'Personal'), ('Otro', 'Otro'),
     ]
-    id_bebida       = models.AutoField(primary_key=True)
-    nombre_bebida   = models.CharField(max_length=100, validators=[validar_solo_letras])
-    tamaño_bebida   = models.CharField(max_length=20, choices=TAMAÑO_CHOICES)
-    cantidad_bebida = models.PositiveIntegerField(validators=[MinValueValidator(1)])
-    precio_compra   = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1)])
-    precio_venta    = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1)])
-    categoria       = models.ForeignKey(
-        'Categoria', 
-        on_delete=models.PROTECT, 
-        related_name='bebidas'
-    )
+    id_bebida          = models.AutoField(primary_key=True)
+    nombre_bebida      = models.CharField(max_length=100, validators=[validar_solo_letras])
+    tamaño_bebida      = models.CharField(max_length=20, choices=TAMAÑO_CHOICES)
+    cantidad_bebida    = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    precio_compra      = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1)])
+    precio_venta       = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1)])
+    categoria          = models.ForeignKey( 'Categoria',  on_delete=models.PROTECT,  related_name='bebidas' )
+    cantidad_a_agregar = models.PositiveIntegerField(default=0, null=True, blank=True,verbose_name="Cantidad adicional")
+    precio_unitario_compra = models.DecimalField(max_digits=8, decimal_places=0, default=0, verbose_name="Precio Unitario Compra")
+    precio_unitario_venta = models.DecimalField(max_digits=8, decimal_places=0, default=0,verbose_name="Precio Unitario Venta")
+    bajo_stock_30 = models.PositiveIntegerField(default =0,verbose_name="Bajo Stock 30%", editable=False)
+    
     class Meta:
         verbose_name = "Bebida"
         verbose_name_plural = "Bebidas"
@@ -149,17 +234,160 @@ class Bebida(models.Model):
         return f"{self.nombre_bebida} ({self.tamaño_bebida})"
     
     def clean(self):
+        
         if self.precio_venta <= self.precio_compra:
-            raise ValidationError({'Precio de venta debe ser mayor que el de compra'})
+            raise ValidationError({
+                'precio_venta':
+                'Precio de venta debe ser mayor que el de compra.'
+             })
+            
+        if not self.cantidad_a_agregar:
+            return
+        
+        if self.cantidad_a_agregar < 0:
+            raise ValidationError({
+                'cantidad_a_agregar':
+                'La cantidad a agregar no puede ser negativa.'
+            })
+            
+        if self.pk:
+            bebida_original = Bebida.objects.get(pk=self.pk)
+            
+            errores ={}
+            
+            if self.cantidad_bebida != bebida_original.cantidad_bebida:
+                errores['cantidad_bebida'] = (
+                    f'No puedes añadir {self.cantidad_a_agregar} a la misma vez que quieres modficar la cantidad  actual de'
+                    f'{bebida_original.cantidad_bebida} ¡Elige la opción correcto!.'
+                )
+                
+            if self.tamaño_bebida != bebida_original.tamaño_bebida:
+                errores['tamaño_bebida'] = (
+                    f'No puedes añadir {self.cantidad_a_agregar} a la misma vez que quieres modficar la cantidad  actual de'
+                    f'{bebida_original.tamaño_bebida} ¡Elige la opción correcto!.'
+                )
+                
+            if self.precio_compra != bebida_original.precio_compra:
+                errores['precio_compra'] = (
+                    f'No puedes añadir {self.cantidad_a_agregar} a la misma vez que quieres modficar la cantidad  actual de'
+                    f'{bebida_original.precio_compra} ¡Elige la opción correcto!.'
+                )
+                
+            if self.precio_venta != bebida_original.precio_venta:
+                errores['precio_venta'] = (
+                    f'No puedes añadir {self.cantidad_a_agregar} a la misma vez que quieres modficar la cantidad  actual de'
+                    f'{bebida_original.precio_venta} ¡Elige la opción correcto!.'
+                )
+            
+            if errores:
+                raise ValidationError(errores)
+            
+    def save(self, *args, **kwargs):
+
+        self.full_clean()
+        
+        if not self.pk:
+            self.bajo_stock_30 = int(self.cantidad_bebida * 0.3)
+
+        if self.pk:
+            bebida_original = Bebida.objects.get(pk=self.pk)
+
+            if (
+                self.cantidad_a_agregar and
+                self.cantidad_a_agregar > 0
+            ):
+
+                # mantener el mismo margen de ganancia
+                margen = (
+                    bebida_original.precio_venta /
+                    bebida_original.precio_compra
+                )
+
+                # precio unitario de compra actual
+                precio_unitario = (
+                    bebida_original.precio_compra /
+                    bebida_original.cantidad_bebida
+                )
+
+                costo_adicional = (
+                    self.cantidad_a_agregar *
+                    precio_unitario
+                )
+
+                # actualizar cantidad
+                self.cantidad_bebida = (
+                    bebida_original.cantidad_bebida +
+                    self.cantidad_a_agregar
+                )
+
+                # actualizar compra
+                self.precio_compra = (
+                    bebida_original.precio_compra +
+                    costo_adicional
+                )
+
+                # actualizar venta
+                self.precio_venta = round(
+                    self.precio_compra * margen
+                )
+
+                # reiniciar
+                self.cantidad_a_agregar = 0
+
+      
+        if self.cantidad_bebida > 0:
+            self.precio_unitario_compra = (
+                Decimal(self.precio_compra) / Decimal(self.cantidad_bebida)
+            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+            self.precio_unitario_venta = (
+                Decimal(self.precio_venta) / Decimal(self.cantidad_bebida)
+            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        else:
+            self.precio_unitario_compra = Decimal("0.00")
+            self.precio_unitario_venta = Decimal("0.00")
+
+        super().save(*args, **kwargs)
+        
         
 
+                
             
-            
-
 # ==================== RECETA Y DETALLE ====================
 class RecetaProducto(models.Model):
     producto = models.OneToOneField(Producto, on_delete=models.CASCADE, related_name='receta')
     activa   = models.BooleanField(default=True)
+    
+    @property
+    def ganancia_estimada(self):
+        return (
+            self.producto.precio_producto -
+            self.costo_preparacion
+        )
+        
+    
+    @property
+    def costo_preparacion(self):
+        total = Decimal('0.00')
+        
+        for detalle in self.detalles.all():
+            total += detalle.costo_detalle
+            
+        return total
+    
+
+    def clean(self):
+        super().clean()
+        
+        if (
+            self.pk and
+            self.costo_preparacion >=
+            self.producto.precio_producto
+        ):
+            raise ValidationError(
+                "El costo de preparación no puede ser "
+               " mayor al precio de producto.")
+          
 
     class Meta:
         verbose_name = "Receta de Producto"
@@ -169,7 +397,7 @@ class RecetaProducto(models.Model):
         return f"Receta de {self.producto.nombre_producto}"
 
     def cuantas_unidades_posibles(self):
-        """Calcula cuántas unidades del producto se pueden preparar con el stock actual."""
+        
         detalles = self.detalles.select_related('insumo').all()
         if not detalles:
             return 0
@@ -191,18 +419,31 @@ class DetalleReceta(models.Model):
     insumo             = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name='en_recetas')
     cantidad_requerida = models.PositiveIntegerField(validators=[MinValueValidator(1)])
 
+      
+    @property
+    def costo_detalle(self):
+        if self.insumo and self.insumo.precio_gramo:
+            return(
+                Decimal(self.cantidad_requerida)
+                * Decimal(self.insumo.precio_gramo)
+            )
+            
+        return Decimal('0.00')
+            
+    
     class Meta:
         verbose_name = "Detalle de Receta"
         verbose_name_plural = "Detalles de Receta"
         unique_together = ('receta', 'insumo')
 
     def __str__(self):
-        return f"{self.insumo.nombre_insumo}: {self.cantidad_requerida}"
+        return ""
     
 
 
 # ==================== MERMA ====================
 class Merma(models.Model):
+    
     MOTIVOS_CHOICES = [
         ('Caducado', 'Caducado'),
         ('Dañado', 'Dañado'),
@@ -213,6 +454,7 @@ class Merma(models.Model):
 
     id_merma         = models.AutoField(primary_key=True)
     insumo           = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name='mermas')
+    insumo_snapshot = models.CharField(max_length=100, null= True, blank=True)  
     fecha_merma      = models.DateTimeField(auto_now_add=True)
     cantidad_mermada = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     motivo           = models.CharField(max_length=150, choices=MOTIVOS_CHOICES)
@@ -227,7 +469,7 @@ class Merma(models.Model):
         ordering = ['-fecha_merma']
 
     def __str__(self):
-        return f"Merma #{self.id_merma} - {self.insumo.nombre_insumo}"
+        return f"Merma #{self.id_merma} | {self.insumo.nombre_insumo}"
 
     def clean(self):
         super().clean()
@@ -242,6 +484,14 @@ class Merma(models.Model):
 
     def save(self, *args, **kwargs):
         
+        if not self.pk:
+            self.insumo_snapshot = (
+                f"{self.insumo.nombre_insumo} | "
+                f"{self.insumo.cantidad_insumo} gramos | "
+                f"${self.insumo.precio_insumo:,.0f}".replace(',','.')
+            )
+
+        
         self.full_clean()
 
      
@@ -252,8 +502,37 @@ class Merma(models.Model):
             self.costo_total_merma = Decimal(self.cantidad_mermada) * precio_por_unidad
         else:
             self.costo_total_merma = Decimal('0.00')
+            
+            
+        if not self.pk:
+            
+        
+           self.insumo.cantidad_insumo -= self.cantidad_mermada
 
-        self.insumo.cantidad_insumo -= self.cantidad_mermada
-        self.insumo.save(update_fields=['cantidad_insumo'])
+        self.insumo.precio_insumo = (
+            self.insumo.precio_insumo - self.costo_total_merma
+        ).quantize(
+            Decimal("1"),
+            rounding=ROUND_HALF_UP
+        )
+
+        if self.insumo.cantidad_insumo > 0:
+            self.insumo.precio_gramo = (
+                self.insumo.precio_insumo /
+                self.insumo.cantidad_insumo
+            ).quantize(
+                Decimal("0.01"),
+                rounding=ROUND_HALF_UP
+            )
+        else:
+            self.insumo.precio_gramo = Decimal("0.00")
+
+        self.insumo.save(
+            update_fields=[
+                "cantidad_insumo",
+                "precio_insumo",
+                "precio_gramo",
+            ]
+        )
 
         super().save(*args, **kwargs)
