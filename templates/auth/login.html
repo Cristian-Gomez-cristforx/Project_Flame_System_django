@@ -379,6 +379,18 @@
                             btn.querySelector('i').className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
                         });
                     });
+
+                    (function () {
+                        const username = document.getElementById('{{ form.username.id_for_label }}');
+                        const password = document.getElementById('{{ form.password.id_for_label }}');
+                        if (!username || !password) return;
+                        username.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                password.focus();
+                            }
+                        });
+                    })();
                 </script>
                 </div>
             </div>

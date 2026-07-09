@@ -5,6 +5,7 @@ from django.contrib.auth.views import LoginView
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .decorators import admin_requerido
@@ -44,10 +45,94 @@ def dashboard(request):
         return redirect('login_modify:login')
 
     rol = perfil.rol if perfil else Perfil.Rol.ADMIN
+    es_admin = request.user.is_superuser or (perfil and perfil.es_admin)
+    es_mesero = perfil and perfil.es_mesero
+    es_cocinero = perfil and perfil.es_cocinero
+
+    from Gestion_Pedidos.models import Mesa, Pedido
+    from Reportes import services as reportes_services
+
+    hoy = timezone.localdate()
+
+    estados_activos = [
+        Pedido.EstadoPedido.PENDIENTE,
+        Pedido.EstadoPedido.COCINA,
+        Pedido.EstadoPedido.COCINADO,
+        Pedido.EstadoPedido.PAGADO,
+    ]
+
+    kpis = {}
+    ultimos_pedidos = []
+    alertas_stock = []
+
+    if es_admin:
+        resumen = reportes_services.resumen_ventas(hoy, hoy)
+        estado_inv = reportes_services.estado_inventario()
+        mesas_total = Mesa.objects.filter(activa=True).count()
+        mesas_ocupadas = Mesa.objects.filter(activa=True, ocupada=True).count()
+
+        kpis = {
+            'ventas_hoy': resumen['total_ingresos'],
+            'pedidos_hoy': resumen['total_pedidos'],
+            'ticket_promedio': resumen['ticket_promedio'],
+            'mesas_ocupadas': mesas_ocupadas,
+            'mesas_total': mesas_total,
+            'stock_bajo_count': len(estado_inv['stock_bajo']),
+        }
+        ultimos_pedidos = (
+            Pedido.objects
+            .select_related('mesa', 'mesero')
+            .order_by('-fecha_creacion')[:6]
+        )
+        alertas_stock = estado_inv['stock_bajo'][:5]
+
+    elif es_mesero:
+        mesas_total = Mesa.objects.filter(activa=True).count()
+        mesas_ocupadas = Mesa.objects.filter(activa=True, ocupada=True).count()
+        mis_activos = Pedido.objects.filter(
+            mesero=request.user, estado__in=estados_activos
+        ).count()
+        pedidos_hoy = Pedido.objects.filter(
+            mesero=request.user, fecha_creacion__date=hoy
+        ).count()
+
+        kpis = {
+            'mis_activos': mis_activos,
+            'mesas_ocupadas': mesas_ocupadas,
+            'mesas_total': mesas_total,
+            'pedidos_hoy': pedidos_hoy,
+        }
+        ultimos_pedidos = (
+            Pedido.objects
+            .filter(mesero=request.user)
+            .select_related('mesa')
+            .order_by('-fecha_creacion')[:6]
+        )
+
+    elif es_cocinero:
+        pendientes = Pedido.objects.filter(estado=Pedido.EstadoPedido.PENDIENTE).count()
+        en_cocina = Pedido.objects.filter(estado=Pedido.EstadoPedido.COCINA).count()
+        cocinados_hoy = Pedido.objects.filter(
+            estado__in=[Pedido.EstadoPedido.COCINADO, Pedido.EstadoPedido.PAGADO, Pedido.EstadoPedido.FINALIZADO],
+            fecha_actualizacion__date=hoy,
+        ).count()
+
+        kpis = {
+            'pendientes': pendientes,
+            'en_cocina': en_cocina,
+            'cocinados_hoy': cocinados_hoy,
+        }
 
     context = {
         'perfil': perfil,
         'rol': rol,
+        'es_admin': es_admin,
+        'es_mesero': es_mesero,
+        'es_cocinero': es_cocinero,
+        'hoy': hoy,
+        'kpis': kpis,
+        'ultimos_pedidos': ultimos_pedidos,
+        'alertas_stock': alertas_stock,
     }
     return render(request, 'auth/dashboard.html', context)
 

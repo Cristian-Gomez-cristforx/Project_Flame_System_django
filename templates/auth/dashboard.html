@@ -1,117 +1,302 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
-{% block title %}Panel principal{% endblock %}
+{% block title %}Inicio{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .welcome-card {
+        background: linear-gradient(135deg, var(--flame-primary) 0%, var(--flame-accent) 100%);
+        color: #fff;
+        border-radius: 14px;
+        padding: 1.75rem 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 10px 30px rgba(217, 72, 15, 0.25);
+    }
+    .welcome-card h1 { margin: 0; font-size: 1.75rem; font-weight: 700; }
+    .welcome-card p { margin: 0.25rem 0 0; opacity: 0.9; }
+    .welcome-card .rol-badge {
+        background: rgba(255,255,255,0.2);
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.85rem;
+        display: inline-block;
+        margin-top: 0.5rem;
+    }
+
+    .kpi-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        border-left: 4px solid var(--flame-primary);
+        height: 100%;
+    }
+    .kpi-card .kpi-label {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--flame-muted);
+        font-weight: 600;
+    }
+    .kpi-card .kpi-value {
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin: 0.25rem 0 0;
+        color: var(--flame-text);
+    }
+    .kpi-card .kpi-sub { font-size: 0.8rem; color: var(--flame-muted); }
+    .kpi-card .kpi-icon {
+        float: right;
+        font-size: 1.5rem;
+        opacity: 0.35;
+        color: var(--flame-primary);
+    }
+    .kpi-card.accent { border-left-color: var(--flame-accent); }
+    .kpi-card.accent .kpi-icon { color: var(--flame-accent); }
+    .kpi-card.success { border-left-color: #2f9e44; }
+    .kpi-card.success .kpi-icon { color: #2f9e44; }
+    .kpi-card.warning { border-left-color: #f08c00; }
+    .kpi-card.warning .kpi-icon { color: #f08c00; }
+    .kpi-card.danger { border-left-color: #e03131; }
+    .kpi-card.danger .kpi-icon { color: #e03131; }
+
+    .panel {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        padding: 1.25rem;
+        height: 100%;
+    }
+    .panel h5 { margin: 0 0 0.75rem; font-weight: 700; }
+    .panel .empty {
+        text-align: center;
+        color: var(--flame-muted);
+        padding: 1rem 0;
+    }
+    .badge-estado { font-size: 0.7rem; padding: 0.25rem 0.5rem; }
+
+    .quick-actions .btn {
+        border-radius: 10px;
+        padding: 0.85rem 1rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1>Bienvenido, {{ user.get_full_name|default:user.username }}</h1>
-        <p class="text-muted-sm mb-0">
-            Rol actual:
-            <strong>{{ perfil.get_rol_display|default:"Administrador" }}</strong>
-        </p>
+<div class="welcome-card">
+    <h1>
+        <i class="fas fa-fire me-2"></i>
+        Hola, {{ user.get_full_name|default:user.username }}
+    </h1>
+    <p>{{ hoy|date:"l, d \d\e F \d\e Y" }}</p>
+    <span class="rol-badge">
+        <i class="fas fa-user-shield me-1"></i>
+        {% if user.is_superuser %}Superadmin
+        {% elif perfil %}{{ perfil.get_rol_display }}
+        {% else %}Usuario{% endif %}
+    </span>
+</div>
+
+{# ====================== ADMIN ====================== #}
+{% if es_admin %}
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="kpi-card success">
+                <i class="fas fa-sack-dollar kpi-icon"></i>
+                <div class="kpi-label">Ventas hoy</div>
+                <p class="kpi-value">${{ kpis.ventas_hoy|floatformat:0|intcomma }}</p>
+                <div class="kpi-sub">{{ kpis.pedidos_hoy }} pedidos</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-card">
+                <i class="fas fa-receipt kpi-icon"></i>
+                <div class="kpi-label">Ticket promedio</div>
+                <p class="kpi-value">${{ kpis.ticket_promedio|floatformat:0|intcomma }}</p>
+                <div class="kpi-sub">por pedido</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-card accent">
+                <i class="fas fa-chair kpi-icon"></i>
+                <div class="kpi-label">Mesas ocupadas</div>
+                <p class="kpi-value">{{ kpis.mesas_ocupadas }}<small class="text-muted-sm">/{{ kpis.mesas_total }}</small></p>
+                <div class="kpi-sub">activas ahora</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-card {% if kpis.stock_bajo_count %}danger{% else %}success{% endif %}">
+                <i class="fas fa-triangle-exclamation kpi-icon"></i>
+                <div class="kpi-label">Stock bajo</div>
+                <p class="kpi-value">{{ kpis.stock_bajo_count }}</p>
+                <div class="kpi-sub">insumos por reponer</div>
+            </div>
+        </div>
     </div>
-</div>
 
-<div class="row g-4">
-
-    {% if perfil.es_admin or user.is_superuser %}
-        <div class="col-md-6 col-lg-4">
-            <div class="card card-elevated h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-boxes-stacked fa-lg me-2 text-primary"></i>
-                        <h5 class="mb-0">Inventario</h5>
-                    </div>
-                    <p class="text-muted-sm">Gestión de insumos, productos y bebidas.</p>
-                    <a href="{% url 'inventario:inventario' %}" class="btn btn-outline-primary btn-sm">
-                        Entrar <i class="fas fa-arrow-right ms-1"></i>
-                    </a>
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="panel">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5><i class="fas fa-clock-rotate-left me-2 text-muted"></i>Últimos pedidos</h5>
+                    <a href="{% url 'pedidos:lista' %}" class="btn btn-sm btn-outline-primary">Ver todos</a>
                 </div>
+                {% if ultimos_pedidos %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Factura</th>
+                                    <th>Mesero</th>
+                                    <th>Mesa/Tipo</th>
+                                    <th>Estado</th>
+                                    <th class="text-end">Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in ultimos_pedidos %}
+                                    <tr>
+                                        <td><a href="{% url 'pedidos:detalle' p.id_pedido %}"><strong>{{ p.numero_factura }}</strong></a></td>
+                                        <td>{{ p.mesero.get_username }}</td>
+                                        <td>
+                                            {% if p.mesa %}Mesa {{ p.mesa.numero_mesa }}
+                                            {% else %}{{ p.get_tipo_display }}{% endif %}
+                                        </td>
+                                        <td><span class="badge bg-secondary badge-estado">{{ p.get_estado_display }}</span></td>
+                                        <td class="text-end text-muted small">{{ p.fecha_creacion|date:"H:i" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty"><i class="fas fa-inbox fa-2x mb-2"></i><p>Sin pedidos aún.</p></div>
+                {% endif %}
             </div>
         </div>
 
-        <div class="col-md-6 col-lg-4">
-            <div class="card card-elevated h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-exclamation-triangle fa-lg me-2 text-warning"></i>
-                        <h5 class="mb-0">Mermas</h5>
-                    </div>
-                    <p class="text-muted-sm">Registro de pérdidas y desperdicios.</p>
-                    <a href="{% url 'inventario:listar_mermas' %}" class="btn btn-outline-primary btn-sm">
-                        Entrar <i class="fas fa-arrow-right ms-1"></i>
-                    </a>
+        <div class="col-lg-5">
+            <div class="panel">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5><i class="fas fa-triangle-exclamation me-2 text-danger"></i>Alertas de stock</h5>
+                    <a href="{% url 'inventario:listar_insumos' %}" class="btn btn-sm btn-outline-primary">Ver insumos</a>
                 </div>
+                {% if alertas_stock %}
+                    <ul class="list-unstyled mb-0">
+                        {% for insumo in alertas_stock %}
+                            <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                <div>
+                                    <strong>{{ insumo.nombre_insumo }}</strong>
+                                    <div class="small text-muted">{{ insumo.categoria.nombre_categoria|default:"Sin categoría" }}</div>
+                                </div>
+                                <span class="badge bg-danger">{{ insumo.stock_actual|floatformat:1 }} {{ insumo.unidad_medida|default:"" }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="empty"><i class="fas fa-check-circle fa-2x mb-2 text-success"></i><p>Todo en orden.</p></div>
+                {% endif %}
             </div>
         </div>
-    {% endif %}
+    </div>
+{% endif %}
 
-    {% if perfil.es_admin or perfil.es_mesero or user.is_superuser %}
-        <div class="col-md-6 col-lg-4">
-            <div class="card card-elevated h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-receipt fa-lg me-2" style="color: var(--flame-primary);"></i>
-                        <h5 class="mb-0">Pedidos</h5>
-                    </div>
-                    <p class="text-muted-sm">Toma y seguimiento de pedidos.</p>
-                    <a href="{% url 'pedidos:lista' %}" class="btn btn-outline-primary btn-sm">
-                        Entrar <i class="fas fa-arrow-right ms-1"></i>
-                    </a>
-                </div>
+{# ====================== MESERO ====================== #}
+{% if es_mesero and not es_admin %}
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="kpi-card">
+                <i class="fas fa-list-check kpi-icon"></i>
+                <div class="kpi-label">Mis pedidos activos</div>
+                <p class="kpi-value">{{ kpis.mis_activos }}</p>
             </div>
         </div>
-
-        <div class="col-md-6 col-lg-4">
-            <div class="card card-elevated h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-chair fa-lg me-2 text-secondary"></i>
-                        <h5 class="mb-0">Mesas</h5>
-                    </div>
-                    <p class="text-muted-sm">Estado visual de las mesas del local.</p>
-                    <a href="{% url 'pedidos:mesas' %}" class="btn btn-outline-primary btn-sm">
-                        Entrar <i class="fas fa-arrow-right ms-1"></i>
-                    </a>
-                </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-card accent">
+                <i class="fas fa-chair kpi-icon"></i>
+                <div class="kpi-label">Mesas ocupadas</div>
+                <p class="kpi-value">{{ kpis.mesas_ocupadas }}<small class="text-muted-sm">/{{ kpis.mesas_total }}</small></p>
             </div>
         </div>
-    {% endif %}
-
-    {% if perfil.es_admin or perfil.es_cocinero or user.is_superuser %}
-        <div class="col-md-6 col-lg-4">
-            <div class="card card-elevated h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-utensils fa-lg me-2 text-success"></i>
-                        <h5 class="mb-0">Cocina</h5>
-                    </div>
-                    <p class="text-muted-sm">Pantalla de pedidos en preparación (KDS).</p>
-                    <a href="{% url 'pedidos:cocina' %}" class="btn btn-outline-primary btn-sm">
-                        Entrar <i class="fas fa-arrow-right ms-1"></i>
-                    </a>
-                </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-card success">
+                <i class="fas fa-calendar-day kpi-icon"></i>
+                <div class="kpi-label">Mis pedidos hoy</div>
+                <p class="kpi-value">{{ kpis.pedidos_hoy }}</p>
             </div>
         </div>
-    {% endif %}
+        <div class="col-6 col-md-3">
+            <a href="{% url 'pedidos:crear' %}" class="btn btn-primary w-100 h-100 d-flex flex-column justify-content-center">
+                <i class="fas fa-plus fa-2x mb-2"></i>
+                <span>Nuevo pedido</span>
+            </a>
+        </div>
+    </div>
 
-    {% if perfil.es_admin or user.is_superuser %}
-        <div class="col-md-6 col-lg-4">
-            <div class="card card-elevated h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-chart-line fa-lg me-2 text-info"></i>
-                        <h5 class="mb-0">Reportes</h5>
-                    </div>
-                    <p class="text-muted-sm">Ventas, mermas y estado de inventario.</p>
-                    <a href="{% url 'reportes:dashboard' %}" class="btn btn-outline-primary btn-sm">
-                        Entrar <i class="fas fa-arrow-right ms-1"></i>
-                    </a>
-                </div>
+    <div class="panel">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5><i class="fas fa-clock-rotate-left me-2 text-muted"></i>Mis últimos pedidos</h5>
+            <a href="{% url 'pedidos:lista' %}" class="btn btn-sm btn-outline-primary">Ver todos</a>
+        </div>
+        {% if ultimos_pedidos %}
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Factura</th><th>Mesa/Tipo</th><th>Estado</th><th class="text-end">Hora</th></tr></thead>
+                    <tbody>
+                        {% for p in ultimos_pedidos %}
+                            <tr>
+                                <td><a href="{% url 'pedidos:detalle' p.id_pedido %}"><strong>{{ p.numero_factura }}</strong></a></td>
+                                <td>{% if p.mesa %}Mesa {{ p.mesa.numero_mesa }}{% else %}{{ p.get_tipo_display }}{% endif %}</td>
+                                <td><span class="badge bg-secondary badge-estado">{{ p.get_estado_display }}</span></td>
+                                <td class="text-end text-muted small">{{ p.fecha_creacion|date:"H:i" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty"><i class="fas fa-inbox fa-2x mb-2"></i><p>Aún no tienes pedidos.</p></div>
+        {% endif %}
+    </div>
+{% endif %}
+
+{# ====================== COCINERO ====================== #}
+{% if es_cocinero and not es_admin %}
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-4">
+            <div class="kpi-card warning">
+                <i class="fas fa-hourglass-half kpi-icon"></i>
+                <div class="kpi-label">Pendientes</div>
+                <p class="kpi-value">{{ kpis.pendientes }}</p>
+                <div class="kpi-sub">por empezar</div>
             </div>
         </div>
-    {% endif %}
+        <div class="col-6 col-md-4">
+            <div class="kpi-card">
+                <i class="fas fa-fire kpi-icon"></i>
+                <div class="kpi-label">En cocina</div>
+                <p class="kpi-value">{{ kpis.en_cocina }}</p>
+                <div class="kpi-sub">preparándose</div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="kpi-card success">
+                <i class="fas fa-check kpi-icon"></i>
+                <div class="kpi-label">Cocinados hoy</div>
+                <p class="kpi-value">{{ kpis.cocinados_hoy }}</p>
+            </div>
+        </div>
+    </div>
 
-</div>
+    <div class="panel text-center">
+        <h5 class="mb-3">Vista de cocina</h5>
+        <p class="text-muted">Abre la pantalla de tickets para trabajar en tiempo real.</p>
+        <a href="{% url 'pedidos:cocina' %}" class="btn btn-primary btn-lg">
+            <i class="fas fa-utensils me-2"></i> Ir a cocina
+        </a>
+    </div>
+{% endif %}
 {% endblock %}
