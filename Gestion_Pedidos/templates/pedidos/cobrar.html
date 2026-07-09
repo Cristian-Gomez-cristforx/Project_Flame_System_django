@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Cobrar {{ pedido.numero_factura }}{% endblock %}
+{% block nav_pedidos %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-cash-register me-2"></i> Cobrar {{ pedido.numero_factura }}</h1>
+    <a href="{% url 'pedidos:detalle' pedido.id_pedido %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Volver
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">Detalle</div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead><tr><th>Item</th><th class="text-center">Cant.</th><th class="text-end">Subtotal</th></tr></thead>
+                    <tbody>
+                        {% for d in pedido.productos.all %}
+                            <tr>
+                                <td>{{ d.producto.nombre_producto }}</td>
+                                <td class="text-center">{{ d.cantidad }}</td>
+                                <td class="text-end">${{ d.subtotal|floatformat:0 }}</td>
+                            </tr>
+                        {% endfor %}
+                        {% for d in pedido.bebidas.all %}
+                            <tr>
+                                <td>{{ d.bebida.nombre_bebida }}</td>
+                                <td class="text-center">{{ d.cantidad }}</td>
+                                <td class="text-end">${{ d.subtotal|floatformat:0 }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2"><strong>Total</strong></td>
+                            <td class="text-end fs-4"><strong>${{ totales.total|floatformat:0 }}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">Método de pago</div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de pago</label>
+                        {{ form.tipo_pago }}
+                        {{ form.tipo_pago.errors }}
+                    </div>
+                    <button class="btn btn-primary w-100">
+                        <i class="fas fa-check me-1"></i> Registrar pago
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,236 @@
+:root {
+    --flame-primary: #d9480f;
+    --flame-primary-dark: #b83a08;
+    --flame-accent: #f59f00;
+    --flame-bg: #f8f5f2;
+    --flame-sidebar-bg: #1f1b18;
+    --flame-sidebar-text: #f4e6da;
+    --flame-sidebar-hover: #d9480f;
+    --flame-border: #e5ddd4;
+    --flame-text: #2b2320;
+    --flame-muted: #7a6d64;
+    --flame-danger: #c92a2a;
+    --flame-warning: #e67700;
+    --flame-success: #2b8a3e;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    background-color: var(--flame-bg);
+    color: var(--flame-text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ==================== SIDEBAR ==================== */
+.sidebar {
+    background-color: var(--flame-sidebar-bg);
+    color: var(--flame-sidebar-text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
+}
+
+.sidebar h3 {
+    color: var(--flame-accent);
+    letter-spacing: 0.5px;
+}
+
+.sidebar .nav-link {
+    color: var(--flame-sidebar-text);
+    padding: 0.65rem 0.9rem;
+    border-radius: 6px;
+    margin-bottom: 0.25rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    text-decoration: none;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background-color: var(--flame-sidebar-hover);
+    color: #fff;
+}
+
+.sidebar .nav-link i {
+    width: 1.2rem;
+    text-align: center;
+    margin-right: 0.4rem;
+}
+
+.sidebar .form-control {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--flame-sidebar-text);
+}
+
+.sidebar .form-control::placeholder {
+    color: rgba(244, 230, 218, 0.5);
+}
+
+.sidebar .form-control:focus {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: var(--flame-accent);
+    color: #fff;
+    box-shadow: none;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding-top: 1.5rem;
+}
+
+.sidebar .btn-logout {
+    background-color: var(--flame-primary);
+    color: #fff;
+    border: none;
+}
+
+.sidebar .btn-logout:hover {
+    background-color: var(--flame-primary-dark);
+    color: #fff;
+}
+
+/* ==================== MAIN CONTENT ==================== */
+.main-content {
+    background-color: var(--flame-bg);
+    min-height: 100vh;
+}
+
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--flame-border);
+}
+
+.page-header h1,
+.page-header h2 {
+    color: var(--flame-text);
+    margin: 0;
+    font-weight: 600;
+}
+
+/* ==================== CARDS ==================== */
+.card {
+    border: 1px solid var(--flame-border);
+    border-radius: 10px;
+}
+
+.card.shadow,
+.card-elevated {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid var(--flame-border);
+    font-weight: 600;
+}
+
+/* ==================== BUTTONS ==================== */
+.btn-primary {
+    background-color: var(--flame-primary);
+    border-color: var(--flame-primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--flame-primary-dark);
+    border-color: var(--flame-primary-dark);
+}
+
+.btn-outline-primary {
+    color: var(--flame-primary);
+    border-color: var(--flame-primary);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--flame-primary);
+    border-color: var(--flame-primary);
+    color: #fff;
+}
+
+/* ==================== TABLES ==================== */
+.table {
+    background-color: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.table thead th {
+    background-color: #f1ebe4;
+    color: var(--flame-text);
+    border-bottom: 2px solid var(--flame-border);
+    font-weight: 600;
+}
+
+.table tbody tr:hover {
+    background-color: #faf6f1;
+}
+
+/* ==================== STOCK / ESTADOS ==================== */
+.stock-bajo {
+    color: var(--flame-danger);
+    font-weight: 600;
+}
+
+.stock-medio {
+    color: var(--flame-warning);
+    font-weight: 600;
+}
+
+.stock-ok {
+    color: var(--flame-success);
+    font-weight: 600;
+}
+
+.badge-estado {
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.badge-pendiente   { background-color: #e9ecef; color: #495057; }
+.badge-cocina      { background-color: #ffe8cc; color: #b8590c; }
+.badge-cocinado    { background-color: #d3f9d8; color: #2b8a3e; }
+.badge-pagado      { background-color: #d0ebff; color: #1864ab; }
+.badge-finalizado  { background-color: #c5f6fa; color: #0b7285; }
+.badge-cancelado   { background-color: #ffe3e3; color: #c92a2a; }
+
+/* ==================== FORMS ==================== */
+.form-label {
+    font-weight: 500;
+    color: var(--flame-text);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--flame-accent);
+    box-shadow: 0 0 0 0.2rem rgba(245, 159, 0, 0.15);
+}
+
+.text-muted-sm {
+    color: var(--flame-muted);
+    font-size: 0.85rem;
+}
+
+/* ==================== ALERTAS ==================== */
+.messages-wrapper {
+    margin-bottom: 1rem;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 767.98px) {
+    .sidebar {
+        min-height: auto;
+    }
+    .sidebar-footer {
+        padding-top: 1rem;
+    }
+}

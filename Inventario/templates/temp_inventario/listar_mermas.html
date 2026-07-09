@@ -1,24 +1,27 @@
-{% extends 'inventario/base.html' %}
+{% extends 'base.html' %}
+
+{% block title %}Mermas - Inventario{% endblock %}
+{% block nav_mermas %}active{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-exclamation-triangle text-danger"></i> Registro de Mermas</h2>
-        <a href="{% url 'inventario:crear_merma' %}" class="btn btn-danger">
-            <i class="fas fa-plus"></i> Registrar Nueva Merma
-        </a>
-    </div>
+<div class="page-header">
+    <h1><i class="fas fa-exclamation-triangle text-danger me-2"></i> Registro de mermas</h1>
+    <a href="{% url 'inventario:crear_merma' %}" class="btn btn-danger">
+        <i class="fas fa-plus"></i> Registrar nueva merma
+    </a>
+</div>
 
-    <div class="card shadow">
-        <div class="card-body">
-            <table class="table table-hover">
-                <thead class="table-dark">
+<div class="card shadow">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
                     <tr>
                         <th>#</th>
                         <th>Insumo</th>
                         <th>Cantidad</th>
                         <th>Motivo</th>
-                        <th>Costo Total</th>
+                        <th>Costo total</th>
                         <th>Fecha</th>
                         <th>Responsable</th>
                     </tr>
@@ -35,7 +38,7 @@
                         <td>{{ merma.responsable }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" class="text-center text-muted">No hay mermas registradas aún.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">No hay mermas registradas aún.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

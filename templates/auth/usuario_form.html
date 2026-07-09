@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if modo == 'crear' %}Nuevo usuario{% else %}Editar usuario{% endif %}{% endblock %}
+{% block nav_usuarios %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>
+            <i class="fas {% if modo == 'crear' %}fa-user-plus{% else %}fa-user-pen{% endif %} me-2"></i>
+            {% if modo == 'crear' %}Nuevo usuario{% else %}Editar: {{ usuario.username }}{% endif %}
+        </h1>
+        <p class="text-muted-sm mb-0">
+            {% if modo == 'crear' %}
+                Completa los datos para registrar un miembro del personal.
+            {% else %}
+                Actualiza la información y el rol del usuario.
+            {% endif %}
+        </p>
+    </div>
+    <a href="{% url 'login_modify:usuarios_lista' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Volver
+    </a>
+</div>
+
+<div class="card card-elevated">
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors|join:" " }}
+                </div>
+            {% endif %}
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="{{ form.username.id_for_label }}" class="form-label">
+                        {{ form.username.label }} <span class="text-danger">*</span>
+                    </label>
+                    {{ form.username }}
+                    {% if form.username.errors %}<div class="text-danger small mt-1">{{ form.username.errors|join:" " }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label for="{{ form.email.id_for_label }}" class="form-label">
+                        {{ form.email.label }} <span class="text-danger">*</span>
+                    </label>
+                    {{ form.email }}
+                    <div id="email-feedback" class="small mt-1"></div>
+                    {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors|join:" " }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                        {{ form.first_name.label }} <span class="text-danger">*</span>
+                    </label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}<div class="text-danger small mt-1">{{ form.first_name.errors|join:" " }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label for="{{ form.last_name.id_for_label }}" class="form-label">
+                        {{ form.last_name.label }} <span class="text-danger">*</span>
+                    </label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}<div class="text-danger small mt-1">{{ form.last_name.errors|join:" " }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label for="{{ form.documento.id_for_label }}" class="form-label">
+                        {{ form.documento.label }}
+                    </label>
+                    {{ form.documento }}
+                    <div id="documento-feedback" class="small mt-1"></div>
+                    {% if form.documento.errors %}<div class="text-danger small mt-1">{{ form.documento.errors|join:" " }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label for="{{ form.telefono.id_for_label }}" class="form-label">
+                        {{ form.telefono.label }}
+                    </label>
+                    {{ form.telefono }}
+                    <div id="telefono-feedback" class="small mt-1"></div>
+                    {% if form.telefono.errors %}<div class="text-danger small mt-1">{{ form.telefono.errors|join:" " }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label for="{{ form.rol.id_for_label }}" class="form-label">
+                        {{ form.rol.label }} <span class="text-danger">*</span>
+                    </label>
+                    {{ form.rol }}
+                    {% if form.rol.errors %}<div class="text-danger small mt-1">{{ form.rol.errors|join:" " }}</div>{% endif %}
+                </div>
+
+                {% if modo == 'editar' %}
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="form-check">
+                            {{ form.activo }}
+                            <label for="{{ form.activo.id_for_label }}" class="form-check-label">
+                                {{ form.activo.label }}
+                            </label>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if modo == 'crear' %}
+                    <div class="col-md-6">
+                        <label for="{{ form.password1.id_for_label }}" class="form-label">
+                            Contraseña <span class="text-danger">*</span>
+                        </label>
+                        {{ form.password1 }}
+                        {% if form.password1.errors %}<div class="text-danger small mt-1">{{ form.password1.errors|join:" " }}</div>{% endif %}
+                        {% if form.password1.help_text %}
+                            <div class="form-text small">{{ form.password1.help_text|safe }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="{{ form.password2.id_for_label }}" class="form-label">
+                            Confirmar contraseña <span class="text-danger">*</span>
+                        </label>
+                        {{ form.password2 }}
+                        {% if form.password2.errors %}<div class="text-danger small mt-1">{{ form.password2.errors|join:" " }}</div>{% endif %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a href="{% url 'login_modify:usuarios_lista' %}" class="btn btn-outline-secondary">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i>
+                    {% if modo == 'crear' %}Crear usuario{% else %}Guardar cambios{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        function bindValidacion(inputId, feedbackId, regex, okMsg, errMsg, opts) {
+            const input = document.getElementById(inputId);
+            const feedback = document.getElementById(feedbackId);
+            if (!input || !feedback) return;
+            const requerido = opts && opts.requerido;
+
+            function validar() {
+                const value = input.value.trim();
+                input.classList.remove('is-valid', 'is-invalid');
+                feedback.classList.remove('text-success', 'text-danger');
+
+                if (!value) {
+                    feedback.textContent = '';
+                    if (requerido) {
+                        input.classList.add('is-invalid');
+                        feedback.classList.add('text-danger');
+                        feedback.textContent = errMsg;
+                    }
+                    return;
+                }
+                if (regex.test(value)) {
+                    input.classList.add('is-valid');
+                    feedback.classList.add('text-success');
+                    feedback.textContent = okMsg;
+                } else {
+                    input.classList.add('is-invalid');
+                    feedback.classList.add('text-danger');
+                    feedback.textContent = errMsg;
+                }
+            }
+
+            input.addEventListener('input', validar);
+            input.addEventListener('blur', validar);
+        }
+
+        bindValidacion(
+            '{{ form.email.id_for_label }}',
+            'email-feedback',
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            '✓ Correo válido',
+            'Formato inválido (ej: usuario@dominio.com)',
+            { requerido: true }
+        );
+
+        bindValidacion(
+            '{{ form.telefono.id_for_label }}',
+            'telefono-feedback',
+            /^\d+$/,
+            '✓ Teléfono válido',
+            'Solo se admiten números'
+        );
+
+        bindValidacion(
+            '{{ form.documento.id_for_label }}',
+            'documento-feedback',
+            /^\d+$/,
+            '✓ Documento válido',
+            'Solo se admiten números'
+        );
+    })();
+</script>
+{% endblock %}

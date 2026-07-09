@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% block title %}Productos - Inventario{% endblock %}
+{% block nav_productos %}active{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -11,9 +12,8 @@
             <a href="{% url 'inventario:crear_producto' %}" class="btn btn-success">
                 <i class="fas fa-plus"></i> Nuevo Producto
             </a>
-            <!-- Botón para crear categoría de Producto -->
-            <a href="{% url 'admin:Inventario_categoria_add' %}?tipo=PRODUCTO" class="btn btn-outline-success ms-2">
-                <i class="fas fa-tags"></i> Crear Categoría de Producto
+            <a href="{% url 'inventario:listar_categorias' %}?tipo=PRODUCTO" class="btn btn-outline-success ms-2">
+                <i class="fas fa-tags"></i> Categorías
             </a>
         </div>
     </div>

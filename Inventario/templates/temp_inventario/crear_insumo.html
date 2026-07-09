@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% block title %}Crear Insumo{% endblock %}
+{% block nav_insumos %}active{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -45,25 +46,22 @@
                 
 
                 <div class="row">
-                    <div class="col-md-6 mb-3"></div>
-                         <label class="form-label">Categoria</label>
-                         <select name="categoria" class="form-select">
-                             <option value="">-- Seleccionar categoria (opcional) --</option>
-
-
-                             {% for categoria in categorias %}
-                                 <option value="{{ cat.id }}" >
-                                     {{categori.nombre_categoria}}
-                                 </option>
-                             {% endfor %}
-                         </select>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Categoría</label>
+                        <select name="categoria" class="form-select">
+                            <option value="">-- Seleccionar categoría (opcional) --</option>
+                            {% for categoria in categorias %}
+                                <option value="{{ categoria.id }}">
+                                    {{ categoria.nombre_categoria }}
+                                </option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <div class="col-md-6 mb-3"> 
+                    <div class="col-md-6 mb-3">
                         <label class="form-label">
                             Nueva categoría (opcional)
                         </label>
-
-                        <input 
+                        <input
                             type="text"
                             name="nueva_categoria"
                             class="form-control"

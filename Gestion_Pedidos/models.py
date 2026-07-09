@@ -26,12 +26,12 @@ class Pedido(models.Model):
     class TipoPedido(models.TextChoices):
           MESA= 'Mesa','Mesa'
           RECOGIDA= 'Recoger', 'Recoger'
-          DOMICILIO= 'Domicilio','Domiilio'   
+          DOMICILIO= 'Domicilio','Domicilio'
     tipo= models.CharField(max_length=20,choices=TipoPedido.choices,default=TipoPedido.MESA) 
     class EstadoPedido(models.TextChoices):
           PENDIENTE = 'Pendiente', 'Pendiente'
           COCINA = 'En cocina', 'En cocina'
-          COCINADO = '', 'Cocinado'
+          COCINADO = 'Cocinado', 'Cocinado'
           PAGADO = 'Pagado', 'Pagado'
           FINALIZADO = 'Finalizado', 'Finalizado'
           CANCELADO = 'Cancelado', 'Cancelado'

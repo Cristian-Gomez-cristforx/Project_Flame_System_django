@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}Mesas{% endblock %}
+{% block nav_mesas %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mesa-card {
+        border-radius: 12px;
+        border: 1px solid var(--flame-border);
+        background: #fff;
+        padding: 1.25rem;
+        text-align: center;
+        transition: transform 0.15s, box-shadow 0.15s;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+    .mesa-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+        color: inherit;
+    }
+    .mesa-libre { border-color: var(--flame-success); }
+    .mesa-ocupada { border-color: var(--flame-primary); background: #fff8f3; }
+    .mesa-numero { font-size: 2.5rem; font-weight: 700; color: var(--flame-text); }
+    .mesa-estado {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+    }
+    .mesa-libre .mesa-estado { color: var(--flame-success); }
+    .mesa-ocupada .mesa-estado { color: var(--flame-primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-chair me-2"></i> Mesas</h1>
+    <a href="{% url 'pedidos:crear' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i> Nuevo pedido
+    </a>
+</div>
+
+<div class="row g-3">
+    {% for item in mesas_data %}
+        <div class="col-6 col-md-3 col-lg-2">
+            {% if item.pedido %}
+                <a href="{% url 'pedidos:detalle' item.pedido.id_pedido %}" class="mesa-card mesa-ocupada">
+                    <div class="mesa-numero">{{ item.mesa.numero_mesa }}</div>
+                    <div class="mesa-estado">Ocupada</div>
+                    <div class="mt-2 text-muted-sm">{{ item.pedido.get_estado_display }}</div>
+                </a>
+            {% else %}
+                <div class="mesa-card mesa-libre">
+                    <div class="mesa-numero">{{ item.mesa.numero_mesa }}</div>
+                    <div class="mesa-estado">Libre</div>
+                </div>
+            {% endif %}
+        </div>
+    {% empty %}
+        <div class="col-12 text-center text-muted py-5">
+            No hay mesas activas. Configúralas desde el admin.
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

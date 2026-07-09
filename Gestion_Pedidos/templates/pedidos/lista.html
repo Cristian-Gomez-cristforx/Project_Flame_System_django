@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Pedidos{% endblock %}
+{% block nav_pedidos %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-receipt me-2"></i> Pedidos</h1>
+    <a href="{% url 'pedidos:crear' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i> Nuevo pedido
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Estado</label>
+                {{ filtro.estado }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tipo</label>
+                {{ filtro.tipo }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Buscar</label>
+                {{ filtro.q }}
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="fas fa-filter me-1"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Factura</th>
+                <th>Tipo</th>
+                <th>Cliente / Mesa</th>
+                <th>Mesero</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in pedidos %}
+                <tr>
+                    <td><strong>{{ p.numero_factura|default:"—" }}</strong></td>
+                    <td>{{ p.get_tipo_display }}</td>
+                    <td>
+                        {% if p.mesa %}
+                            <i class="fas fa-chair me-1"></i> Mesa {{ p.mesa.numero_mesa }}
+                        {% else %}
+                            {{ p.nombre_cliente|default:"—" }}
+                        {% endif %}
+                    </td>
+                    <td>{{ p.mesero.get_username }}</td>
+                    <td>
+                        <span class="badge-estado badge-{{ p.estado|lower|slice:':7' }}">
+                            {{ p.get_estado_display }}
+                        </span>
+                    </td>
+                    <td class="text-muted-sm">{{ p.fecha_creacion|date:"d M H:i" }}</td>
+                    <td class="text-end">
+                        <a href="{% url 'pedidos:detalle' p.id_pedido %}" class="btn btn-sm btn-outline-primary">
+                            Ver <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        No hay pedidos que coincidan.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

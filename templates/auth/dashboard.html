@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Panel principal{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Bienvenido, {{ user.get_full_name|default:user.username }}</h1>
+        <p class="text-muted-sm mb-0">
+            Rol actual:
+            <strong>{{ perfil.get_rol_display|default:"Administrador" }}</strong>
+        </p>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    {% if perfil.es_admin or user.is_superuser %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-elevated h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-boxes-stacked fa-lg me-2 text-primary"></i>
+                        <h5 class="mb-0">Inventario</h5>
+                    </div>
+                    <p class="text-muted-sm">Gestión de insumos, productos y bebidas.</p>
+                    <a href="{% url 'inventario:inventario' %}" class="btn btn-outline-primary btn-sm">
+                        Entrar <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-elevated h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-exclamation-triangle fa-lg me-2 text-warning"></i>
+                        <h5 class="mb-0">Mermas</h5>
+                    </div>
+                    <p class="text-muted-sm">Registro de pérdidas y desperdicios.</p>
+                    <a href="{% url 'inventario:listar_mermas' %}" class="btn btn-outline-primary btn-sm">
+                        Entrar <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if perfil.es_admin or perfil.es_mesero or user.is_superuser %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-elevated h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-receipt fa-lg me-2" style="color: var(--flame-primary);"></i>
+                        <h5 class="mb-0">Pedidos</h5>
+                    </div>
+                    <p class="text-muted-sm">Toma y seguimiento de pedidos.</p>
+                    <a href="{% url 'pedidos:lista' %}" class="btn btn-outline-primary btn-sm">
+                        Entrar <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-elevated h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-chair fa-lg me-2 text-secondary"></i>
+                        <h5 class="mb-0">Mesas</h5>
+                    </div>
+                    <p class="text-muted-sm">Estado visual de las mesas del local.</p>
+                    <a href="{% url 'pedidos:mesas' %}" class="btn btn-outline-primary btn-sm">
+                        Entrar <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if perfil.es_admin or perfil.es_cocinero or user.is_superuser %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-elevated h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-utensils fa-lg me-2 text-success"></i>
+                        <h5 class="mb-0">Cocina</h5>
+                    </div>
+                    <p class="text-muted-sm">Pantalla de pedidos en preparación (KDS).</p>
+                    <a href="{% url 'pedidos:cocina' %}" class="btn btn-outline-primary btn-sm">
+                        Entrar <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if perfil.es_admin or user.is_superuser %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-elevated h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-chart-line fa-lg me-2 text-info"></i>
+                        <h5 class="mb-0">Reportes</h5>
+                    </div>
+                    <p class="text-muted-sm">Ventas, mermas y estado de inventario.</p>
+                    <a href="{% url 'reportes:dashboard' %}" class="btn btn-outline-primary btn-sm">
+                        Entrar <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

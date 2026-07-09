@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Nueva receta{% endblock %}
+{% block nav_recetas %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-book text-success me-2"></i> Nueva receta</h1>
+    <a href="{% url 'inventario:listar_recetas' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card shadow">
+    <div class="card-body">
+        {% include 'temp_inventario/_receta_form.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const container = document.getElementById('formset-detalles');
+    const addBtn = document.getElementById('add-detalle');
+    const totalForms = document.querySelector('input[name="detalles-TOTAL_FORMS"]');
+
+    addBtn?.addEventListener('click', function () {
+        const rows = container.querySelectorAll('.detalle-row');
+        if (rows.length === 0) return;
+
+        const template = rows[0].cloneNode(true);
+        const newIndex = parseInt(totalForms.value, 10);
+
+        template.querySelectorAll('input, select, textarea').forEach(el => {
+            if (el.name) el.name = el.name.replace(/detalles-\d+-/, `detalles-${newIndex}-`);
+            if (el.id) el.id = el.id.replace(/id_detalles-\d+-/, `id_detalles-${newIndex}-`);
+            if (el.type !== 'checkbox' && el.type !== 'hidden') el.value = '';
+            if (el.type === 'checkbox') el.checked = false;
+        });
+
+        container.appendChild(template);
+        totalForms.value = newIndex + 1;
+    });
+})();
+</script>
+{% endblock %}

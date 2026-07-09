@@ -1,0 +1,19 @@
+from django.urls import path
+
+from . import views
+
+
+app_name = 'pedidos'
+
+urlpatterns = [
+    path('', views.lista_pedidos, name='lista'),
+    path('nuevo/', views.crear_pedido, name='crear'),
+    path('mesas/', views.lista_mesas, name='mesas'),
+    path('cocina/', views.cocina, name='cocina'),
+    path('<int:pedido_id>/', views.detalle_pedido, name='detalle'),
+    path('<int:pedido_id>/agregar-producto/', views.agregar_producto, name='agregar_producto'),
+    path('<int:pedido_id>/agregar-bebida/', views.agregar_bebida, name='agregar_bebida'),
+    path('<int:pedido_id>/eliminar/<str:tipo_item>/<int:item_id>/', views.eliminar_item, name='eliminar_item'),
+    path('<int:pedido_id>/cambiar-estado/', views.cambiar_estado, name='cambiar_estado'),
+    path('<int:pedido_id>/cobrar/', views.cobrar_pedido, name='cobrar'),
+]

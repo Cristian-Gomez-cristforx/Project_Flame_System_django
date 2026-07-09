@@ -1,42 +1,96 @@
 {% extends 'base.html' %}
 
-{% block title %}Inventario - FlameSystem{% endblock %}
+{% block title %}Inventario{% endblock %}
+{% block nav_inventario %}active{% endblock %}
 
 {% block content %}
-    <h1 class="fw-bold mb-4">Inventario</h1>
+<div class="page-header">
+    <h1><i class="fas fa-boxes-stacked me-2"></i> Inventario</h1>
+</div>
 
-    <div class="row g-4">
-        <div class="col-md-4">
-            <div class="card h-100 text-center shadow-sm">
-                <div class="card-body py-5">
-                    <i class="fas fa-hamburger fa-4x text-muted mb-3"></i>
-                    <h5 class="card-title fw-bold">Productos</h5>
-                    <p class="text-muted">Hamburguesas y combos</p>
-                    <h3 class="text-danger fw-bold">$0</h3>
+<div class="row g-4">
+    <div class="col-md-6 col-lg-4">
+        <a href="{% url 'inventario:listar_insumos' %}" class="text-decoration-none">
+            <div class="card card-elevated h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-boxes fa-lg me-2 text-primary"></i>
+                        <h5 class="mb-0">Insumos</h5>
+                    </div>
+                    <p class="text-muted-sm mb-0">Materias primas, stock y turnos.</p>
                 </div>
             </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="card h-100 text-center shadow-sm">
-                <div class="card-body py-5">
-                    <i class="fas fa-boxes fa-4x text-muted mb-3"></i>
-                    <h5 class="card-title fw-bold">Insumos</h5>
-                    <p class="text-muted">Materias primas</p>
-                    <h3 class="text-danger fw-bold">$0</h3>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="card h-100 text-center shadow-sm">
-                <div class="card-body py-5">
-                    <i class="fas fa-wine-bottle fa-4x text-muted mb-3"></i>
-                    <h5 class="card-title fw-bold">Bebidas</h5>
-                    <p class="text-muted">Refrescos y jugos</p>
-                    <h3 class="text-danger fw-bold">$0</h3>
-                </div>
-            </div>
-        </div>
+        </a>
     </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{% url 'inventario:listar_productos' %}" class="text-decoration-none">
+            <div class="card card-elevated h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-hamburger fa-lg me-2 text-warning"></i>
+                        <h5 class="mb-0">Productos</h5>
+                    </div>
+                    <p class="text-muted-sm mb-0">Ítems del menú preparados.</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{% url 'inventario:listar_bebidas' %}" class="text-decoration-none">
+            <div class="card card-elevated h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-wine-bottle fa-lg me-2 text-info"></i>
+                        <h5 class="mb-0">Bebidas</h5>
+                    </div>
+                    <p class="text-muted-sm mb-0">Refrescos, jugos y presentaciones.</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{% url 'inventario:listar_recetas' %}" class="text-decoration-none">
+            <div class="card card-elevated h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-book fa-lg me-2 text-success"></i>
+                        <h5 class="mb-0">Recetas</h5>
+                    </div>
+                    <p class="text-muted-sm mb-0">Insumos requeridos por producto.</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{% url 'inventario:listar_categorias' %}" class="text-decoration-none">
+            <div class="card card-elevated h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-tags fa-lg me-2 text-secondary"></i>
+                        <h5 class="mb-0">Categorías</h5>
+                    </div>
+                    <p class="text-muted-sm mb-0">Clasificación de insumos, productos y bebidas.</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{% url 'inventario:listar_mermas' %}" class="text-decoration-none">
+            <div class="card card-elevated h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-exclamation-triangle fa-lg me-2 text-danger"></i>
+                        <h5 class="mb-0">Mermas</h5>
+                    </div>
+                    <p class="text-muted-sm mb-0">Registro de pérdidas y desperdicios.</p>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
 {% endblock %}

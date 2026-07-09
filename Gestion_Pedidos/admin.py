@@ -1,5 +1,11 @@
 from django.contrib import admin
-from .models import Pedido, DetallePedidoProducto, DetallePedidoBebida,DetallePedidoInsumo
+from .models import Pedido, DetallePedidoProducto, DetallePedidoBebida,DetallePedidoInsumo, Mesa
+
+
+@admin.register(Mesa)
+class MesaAdmin(admin.ModelAdmin):
+    list_display = ('numero_mesa', 'activa', 'ocupada')
+    list_filter = ('activa', 'ocupada')
 
 # Register your models here.
 

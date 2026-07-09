@@ -1,0 +1,83 @@
+{% load static %}
+
+<form method="POST" novalidate>
+    {% csrf_token %}
+
+    <div class="row g-3">
+        <div class="col-md-8">
+            <label class="form-label">{{ form.producto.label }}</label>
+            {{ form.producto }}
+            {% if form.producto.errors %}
+                <div class="text-danger small mt-1">{{ form.producto.errors|join:', ' }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Activa</label>
+            <div class="form-check mt-2">
+                {{ form.activa }}
+                <label class="form-check-label ms-1" for="{{ form.activa.id_for_label }}">
+                    Marca como activa
+                </label>
+            </div>
+        </div>
+    </div>
+
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger mt-3">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <hr>
+
+    <h5><i class="fas fa-list"></i> Insumos requeridos</h5>
+    <p class="text-muted-sm">Cada insumo con su cantidad requerida por unidad de producto.</p>
+
+    {{ formset.management_form }}
+    {% if formset.non_form_errors %}
+        <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+    {% endif %}
+
+    <div id="formset-detalles">
+        {% for detalle_form in formset %}
+            <div class="row g-2 align-items-end mb-2 detalle-row">
+                {% for hidden in detalle_form.hidden_fields %}{{ hidden }}{% endfor %}
+                <div class="col-md-6">
+                    <label class="form-label">Insumo</label>
+                    {{ detalle_form.insumo }}
+                    {% if detalle_form.insumo.errors %}
+                        <div class="text-danger small">{{ detalle_form.insumo.errors|join:', ' }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Cantidad requerida</label>
+                    {{ detalle_form.cantidad_requerida }}
+                    {% if detalle_form.cantidad_requerida.errors %}
+                        <div class="text-danger small">{{ detalle_form.cantidad_requerida.errors|join:', ' }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-2">
+                    {% if detalle_form.instance.pk %}
+                        <div class="form-check">
+                            {{ detalle_form.DELETE }}
+                            <label class="form-check-label text-danger" for="{{ detalle_form.DELETE.id_for_label }}">
+                                Eliminar
+                            </label>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <button type="button" id="add-detalle" class="btn btn-sm btn-outline-primary mt-2">
+        <i class="fas fa-plus"></i> Agregar insumo
+    </button>
+
+    <hr>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Guardar
+        </button>
+        <a href="{% url 'inventario:listar_recetas' %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+</form>

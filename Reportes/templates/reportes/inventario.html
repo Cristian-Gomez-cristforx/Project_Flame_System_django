@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Reporte de inventario{% endblock %}
+{% block nav_reportes %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-boxes-stacked text-secondary me-2"></i> Estado de inventario</h1>
+    <a href="{% url 'reportes:dashboard' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card card-elevated"><div class="card-body text-center">
+            <div class="text-muted-sm">Total insumos</div>
+            <h2 class="mb-0">{{ estado.total_insumos }}</h2>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-elevated"><div class="card-body text-center">
+            <div class="text-muted-sm">Stock bajo (≤30%)</div>
+            <h2 class="mb-0 stock-bajo">{{ estado.stock_bajo|length }}</h2>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-elevated"><div class="card-body text-center">
+            <div class="text-muted-sm">Sin turno abierto</div>
+            <h2 class="mb-0 text-muted">{{ estado.sin_turno|length }}</h2>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-elevated"><div class="card-body text-center">
+            <div class="text-muted-sm">Stock OK</div>
+            <h2 class="mb-0 stock-ok">{{ estado.ok|length }}</h2>
+        </div></div>
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header stock-bajo">
+        <i class="fas fa-exclamation-triangle"></i> Insumos con stock bajo
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Insumo</th>
+                        <th>Categoría</th>
+                        <th>Stock actual</th>
+                        <th>Stock máximo</th>
+                        <th>% del máximo</th>
+                        <th class="text-center">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for insumo in estado.stock_bajo %}
+                    <tr>
+                        <td><strong>{{ insumo.nombre_insumo }}</strong></td>
+                        <td>{{ insumo.categoria.nombre_categoria }}</td>
+                        <td>{{ insumo.cantidad_insumo }} {{ insumo.get_unidad_medida_display }}</td>
+                        <td>{{ insumo.stock_maximo }}</td>
+                        <td class="stock-bajo">{{ insumo.porcentaje_del_maximo }}%</td>
+                        <td class="text-center">
+                            <a href="{% url 'inventario:agregar_stock_insumo' insumo.id_insumo %}" class="btn btn-sm btn-success">
+                                <i class="fas fa-plus"></i> Agregar
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">Sin insumos en stock bajo. </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-header">
+        <i class="fas fa-hourglass-half"></i> Sin turno abierto
+    </div>
+    <div class="card-body">
+        <p class="text-muted-sm">Estos insumos no tienen un stock máximo definido para el turno actual.</p>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr><th>Insumo</th><th>Categoría</th><th>Stock actual</th></tr>
+                </thead>
+                <tbody>
+                    {% for insumo in estado.sin_turno %}
+                    <tr>
+                        <td>{{ insumo.nombre_insumo }}</td>
+                        <td>{{ insumo.categoria.nombre_categoria }}</td>
+                        <td>{{ insumo.cantidad_insumo }} {{ insumo.get_unidad_medida_display }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center text-muted py-4">Todos los insumos tienen turno abierto.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -30,7 +30,18 @@ SECRET_KEY = env('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool('DEBUG')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list(
+    'ALLOWED_HOSTS',
+    default=['localhost', '127.0.0.1', '.trycloudflare.com'],
+)
+
+CSRF_TRUSTED_ORIGINS = env.list(
+    'CSRF_TRUSTED_ORIGINS',
+    default=['https://*.trycloudflare.com'],
+)
+
+# Cloudflare tunnel entrega tráfico HTTP al Django detrás de HTTPS del cliente.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
@@ -139,3 +150,8 @@ STATICFILES_DIRS = [
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Auth
+LOGIN_URL = 'login_modify:login'
+LOGIN_REDIRECT_URL = 'login_modify:dashboard'
+LOGOUT_REDIRECT_URL = 'login_modify:login'

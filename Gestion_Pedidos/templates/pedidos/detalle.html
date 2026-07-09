@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block title %}Pedido {{ pedido.numero_factura }}{% endblock %}
+{% block nav_pedidos %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="mb-1">Pedido {{ pedido.numero_factura }}</h1>
+        <div class="text-muted-sm">
+            {{ pedido.get_tipo_display }}
+            {% if pedido.mesa %} · Mesa {{ pedido.mesa.numero_mesa }}{% endif %}
+            {% if pedido.nombre_cliente %} · {{ pedido.nombre_cliente }}{% endif %}
+            · Mesero: {{ pedido.mesero.get_username }}
+            · <span class="badge-estado badge-{{ pedido.estado|lower|slice:':7' }}">{{ pedido.get_estado_display }}</span>
+        </div>
+    </div>
+    <a href="{% url 'pedidos:lista' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Volver
+    </a>
+</div>
+
+<div class="row g-4">
+
+    <!-- Columna izquierda: ítems -->
+    <div class="col-lg-8">
+
+        <!-- Productos -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-utensils me-1"></i> Productos</span>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-3">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-center">Cant.</th>
+                            <th class="text-end">Unitario</th>
+                            <th class="text-end">Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in pedido.productos.all %}
+                            <tr>
+                                <td>{{ d.producto.nombre_producto }}</td>
+                                <td class="text-center">{{ d.cantidad }}</td>
+                                <td class="text-end">${{ d.precio_unitario|floatformat:0 }}</td>
+                                <td class="text-end"><strong>${{ d.subtotal|floatformat:0 }}</strong></td>
+                                <td class="text-end">
+                                    {% if pedido.estado == estados.PENDIENTE %}
+                                        <form method="post" action="{% url 'pedidos:eliminar_item' pedido.id_pedido 'producto' d.id %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted">Sin productos.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                {% if pedido.estado == estados.PENDIENTE %}
+                    <form method="post" action="{% url 'pedidos:agregar_producto' pedido.id_pedido %}" class="row g-2 align-items-end">
+                        {% csrf_token %}
+                        <div class="col-md-7">
+                            <label class="form-label mb-1">Producto</label>
+                            {{ form_producto.producto }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-1">Cantidad</label>
+                            {{ form_producto.cantidad }}
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100">
+                                <i class="fas fa-plus"></i> Agregar
+                            </button>
+                        </div>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Bebidas -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-glass-water me-1"></i> Bebidas
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-3">
+                    <thead>
+                        <tr>
+                            <th>Bebida</th>
+                            <th class="text-center">Cant.</th>
+                            <th class="text-end">Unitario</th>
+                            <th class="text-end">Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in pedido.bebidas.all %}
+                            <tr>
+                                <td>{{ d.bebida.nombre_bebida }} <small class="text-muted">({{ d.bebida.tamaño_bebida }})</small></td>
+                                <td class="text-center">{{ d.cantidad }}</td>
+                                <td class="text-end">${{ d.precio_unitario|floatformat:0 }}</td>
+                                <td class="text-end"><strong>${{ d.subtotal|floatformat:0 }}</strong></td>
+                                <td class="text-end">
+                                    {% if pedido.estado == estados.PENDIENTE %}
+                                        <form method="post" action="{% url 'pedidos:eliminar_item' pedido.id_pedido 'bebida' d.id %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted">Sin bebidas.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                {% if pedido.estado == estados.PENDIENTE %}
+                    <form method="post" action="{% url 'pedidos:agregar_bebida' pedido.id_pedido %}" class="row g-2 align-items-end">
+                        {% csrf_token %}
+                        <div class="col-md-7">
+                            <label class="form-label mb-1">Bebida</label>
+                            {{ form_bebida.bebida }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-1">Cantidad</label>
+                            {{ form_bebida.cantidad }}
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100">
+                                <i class="fas fa-plus"></i> Agregar
+                            </button>
+                        </div>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna derecha: totales y acciones -->
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header">Resumen</div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Productos</span>
+                    <span>${{ totales.total_productos|floatformat:0 }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Bebidas</span>
+                    <span>${{ totales.total_bebidas|floatformat:0 }}</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <strong>Total</strong>
+                    <strong class="fs-4">${{ totales.total|floatformat:0 }}</strong>
+                </div>
+                {% if pedido.tipo_pago %}
+                    <div class="text-muted-sm mt-2">
+                        Pago: {{ pedido.get_tipo_pago_display }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Acciones</div>
+            <div class="card-body d-grid gap-2">
+                {% if pedido.estado == estados.PENDIENTE %}
+                    <form method="post" action="{% url 'pedidos:cambiar_estado' pedido.id_pedido %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="estado" value="{{ estados.COCINA }}">
+                        <button class="btn btn-primary w-100">
+                            <i class="fas fa-fire me-1"></i> Enviar a cocina
+                        </button>
+                    </form>
+                {% elif pedido.estado == estados.COCINA %}
+                    <form method="post" action="{% url 'pedidos:cambiar_estado' pedido.id_pedido %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="estado" value="{{ estados.COCINADO }}">
+                        <button class="btn btn-success w-100">
+                            <i class="fas fa-check me-1"></i> Marcar cocinado
+                        </button>
+                    </form>
+                {% elif pedido.estado == estados.COCINADO %}
+                    <a href="{% url 'pedidos:cobrar' pedido.id_pedido %}" class="btn btn-primary w-100">
+                        <i class="fas fa-cash-register me-1"></i> Cobrar
+                    </a>
+                {% elif pedido.estado == estados.PAGADO %}
+                    <form method="post" action="{% url 'pedidos:cambiar_estado' pedido.id_pedido %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="estado" value="{{ estados.FINALIZADO }}">
+                        <button class="btn btn-success w-100">
+                            <i class="fas fa-flag-checkered me-1"></i> Finalizar
+                        </button>
+                    </form>
+                {% endif %}
+
+                {% if pedido.estado != estados.FINALIZADO and pedido.estado != estados.CANCELADO %}
+                    <form method="post" action="{% url 'pedidos:cambiar_estado' pedido.id_pedido %}"
+                          onsubmit="return confirm('¿Cancelar este pedido?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="estado" value="{{ estados.CANCELADO }}">
+                        <button class="btn btn-outline-danger w-100">
+                            <i class="fas fa-ban me-1"></i> Cancelar pedido
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

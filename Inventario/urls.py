@@ -1,18 +1,22 @@
-# inventario/urls.py
-
 from django.urls import path
+
 from . import views
+
 
 app_name = 'inventario'
 
 urlpatterns = [
-    
-    path('', views.inventario, name='inventario'),                   
+    path('', views.inventario, name='inventario'),
 
     # Insumos
     path('insumos/', views.listar_insumos, name='listar_insumos'),
     path('insumos/crear/', views.crear_insumo, name='crear_insumo'),
     path('insumos/editar/<int:id>/', views.editar_insumo, name='editar_insumo'),
+    path('insumos/agregar-stock/<int:id>/', views.agregar_stock_insumo, name='agregar_stock_insumo'),
+
+    # Turno
+    path('insumos/turno/abrir/', views.abrir_turno, name='abrir_turno'),
+    path('insumos/turno/cerrar/', views.cerrar_turno, name='cerrar_turno'),
 
     # Productos
     path('productos/', views.listar_productos, name='listar_productos'),
@@ -24,7 +28,19 @@ urlpatterns = [
     path('bebidas/crear/', views.crear_bebida, name='crear_bebida'),
     path('bebidas/editar/<int:id>/', views.editar_bebida, name='editar_bebida'),
 
-    # ====================== MERMAS ======================
+    # Recetas
+    path('recetas/', views.listar_recetas, name='listar_recetas'),
+    path('recetas/crear/', views.crear_receta, name='crear_receta'),
+    path('recetas/editar/<int:id>/', views.editar_receta, name='editar_receta'),
+    path('recetas/eliminar/<int:id>/', views.eliminar_receta, name='eliminar_receta'),
+
+    # Categorías
+    path('categorias/', views.listar_categorias, name='listar_categorias'),
+    path('categorias/crear/', views.crear_categoria, name='crear_categoria'),
+    path('categorias/editar/<int:id>/', views.editar_categoria, name='editar_categoria'),
+    path('categorias/eliminar/<int:id>/', views.eliminar_categoria, name='eliminar_categoria'),
+
+    # Mermas
     path('mermas/', views.listar_mermas, name='listar_mermas'),
     path('mermas/crear/', views.crear_merma, name='crear_merma'),
 ]

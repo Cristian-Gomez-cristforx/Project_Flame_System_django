@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Cocina{% endblock %}
+{% block nav_cocina %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ticket {
+        background: #fff;
+        border-left: 6px solid var(--flame-primary);
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        margin-bottom: 1rem;
+    }
+    .ticket.pendiente { border-left-color: #adb5bd; }
+    .ticket.cocina { border-left-color: var(--flame-primary); }
+    .ticket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .ticket-header h5 { margin: 0; }
+    .ticket-items { list-style: none; padding: 0; margin: 0.5rem 0; }
+    .ticket-items li { padding: 0.25rem 0; border-bottom: 1px dashed #eee; }
+    .ticket-time { font-size: 0.85rem; color: var(--flame-muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-utensils me-2"></i> Cocina</h1>
+    <button class="btn btn-outline-secondary" onclick="location.reload()">
+        <i class="fas fa-rotate me-1"></i> Refrescar
+    </button>
+</div>
+
+<div class="row">
+    {% for p in pedidos %}
+        <div class="col-md-6 col-lg-4">
+            <div class="ticket {{ p.estado|lower|slice:':7' }}">
+                <div class="ticket-header">
+                    <h5>
+                        {{ p.numero_factura }}
+                        {% if p.mesa %}<small class="text-muted">· Mesa {{ p.mesa.numero_mesa }}</small>{% endif %}
+                    </h5>
+                    <span class="badge-estado badge-{{ p.estado|lower|slice:':7' }}">
+                        {{ p.get_estado_display }}
+                    </span>
+                </div>
+
+                <div class="ticket-time">
+                    <i class="fas fa-clock me-1"></i> {{ p.fecha_creacion|timesince }} atrás · {{ p.get_tipo_display }}
+                </div>
+
+                <ul class="ticket-items">
+                    {% for d in p.productos.all %}
+                        <li><strong>{{ d.cantidad }}×</strong> {{ d.producto.nombre_producto }}</li>
+                    {% endfor %}
+                    {% for d in p.bebidas.all %}
+                        <li class="text-muted">
+                            <strong>{{ d.cantidad }}×</strong> {{ d.bebida.nombre_bebida }} ({{ d.bebida.tamaño_bebida }})
+                        </li>
+                    {% endfor %}
+                </ul>
+
+                <form method="post" action="{% url 'pedidos:cambiar_estado' p.id_pedido %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{% url 'pedidos:cocina' %}">
+                    {% if p.estado == estados.PENDIENTE %}
+                        <input type="hidden" name="estado" value="{{ estados.COCINA }}">
+                        <button class="btn btn-primary w-100">
+                            <i class="fas fa-fire me-1"></i> Empezar
+                        </button>
+                    {% elif p.estado == estados.COCINA %}
+                        <input type="hidden" name="estado" value="{{ estados.COCINADO }}">
+                        <button class="btn btn-success w-100">
+                            <i class="fas fa-check me-1"></i> Marcar cocinado
+                        </button>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12 text-center text-muted py-5">
+            <i class="fas fa-mug-hot fa-3x mb-3"></i>
+            <p>No hay pedidos pendientes. 🎉</p>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    setTimeout(() => location.reload(), 30000);
+</script>
+{% endblock %}

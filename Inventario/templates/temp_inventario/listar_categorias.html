@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Categorías - Inventario{% endblock %}
+{% block nav_categorias %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-tags text-secondary me-2"></i> Categorías</h1>
+    <a href="{% url 'inventario:crear_categoria' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Nueva categoría
+    </a>
+</div>
+
+<div class="mb-3">
+    <form method="GET" class="d-flex gap-2">
+        <select name="tipo" class="form-select" onchange="this.form.submit()">
+            <option value="">Todos los tipos</option>
+            {% for value, label in tipos %}
+                <option value="{{ value }}" {% if tipo_actual == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        {% if tipo_actual %}
+            <a href="{% url 'inventario:listar_categorias' %}" class="btn btn-secondary">Limpiar</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="card shadow">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Ítems asociados</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat in categorias %}
+                    <tr>
+                        <td>{{ cat.pk }}</td>
+                        <td><strong>{{ cat.nombre_categoria }}</strong></td>
+                        <td><span class="badge bg-secondary">{{ cat.get_tipo_display }}</span></td>
+                        <td>
+                            <small class="text-muted-sm">
+                                {% if cat.tipo == 'INSUMO' %}
+                                    {{ cat.insumos.count }} insumo(s)
+                                {% elif cat.tipo == 'PRODUCTO' %}
+                                    {{ cat.productos.count }} producto(s)
+                                {% elif cat.tipo == 'BEBIDA' %}
+                                    {{ cat.bebidas.count }} bebida(s)
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td class="text-center">
+                            <a href="{% url 'inventario:editar_categoria' cat.pk %}" class="btn btn-sm btn-warning">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form method="POST" action="{% url 'inventario:eliminar_categoria' cat.pk %}" class="d-inline"
+                                  onsubmit="return confirm('¿Eliminar categoría {{ cat.nombre_categoria }}?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            No hay categorías registradas.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

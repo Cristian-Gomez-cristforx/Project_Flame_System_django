@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Nueva categoría{% endblock %}
+{% block nav_categorias %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-tags text-secondary me-2"></i> Nueva categoría</h1>
+    <a href="{% url 'inventario:listar_categorias' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label">Nombre de la categoría</label>
+                        {{ form.nombre_categoria }}
+                        {% if form.nombre_categoria.errors %}
+                            <div class="text-danger small mt-1">{{ form.nombre_categoria.errors|join:', ' }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Tipo</label>
+                        {{ form.tipo }}
+                        {% if form.tipo.errors %}
+                            <div class="text-danger small mt-1">{{ form.tipo.errors|join:', ' }}</div>
+                        {% endif %}
+                    </div>
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                    <a href="{% url 'inventario:listar_categorias' %}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
