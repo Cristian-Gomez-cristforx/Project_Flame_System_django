@@ -44,6 +44,7 @@ class InsumoForm(forms.ModelForm):
             'unidad_medida',
             'precio_insumo',
             'categoria',
+            'cantidad_a_agregar',
         ]
         widgets = {
             'nombre_insumo': forms.TextInput(attrs=BOOTSTRAP_INPUT),
@@ -51,6 +52,7 @@ class InsumoForm(forms.ModelForm):
             'unidad_medida': forms.Select(attrs=BOOTSTRAP_SELECT),
             'precio_insumo': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
             'categoria': forms.Select(attrs=BOOTSTRAP_SELECT),
+            'cantidad_a_agregar': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 0, 'step': '0.01'}),
         }
 
     def __init__(self, *args, **kwargs):

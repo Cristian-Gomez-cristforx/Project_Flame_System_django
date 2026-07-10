@@ -44,8 +44,39 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio</label>
-                        <input type="number" name="precio_insumo" class="form-control" 
+                        <input type="number" name="precio_insumo" class="form-control"
                                value="{{ insumo.precio_insumo }}" min="1" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Categoría</label>
+                        <select name="categoria" class="form-select">
+                            <option value="">-- Seleccionar categoría --</option>
+                            {% for categoria in categorias %}
+                                <option value="{{ categoria.id }}"
+                                    {% if categoria.id == insumo.categoria_id %}selected{% endif %}>
+                                    {{ categoria.nombre_categoria }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nueva categoría (opcional)</label>
+                        <input type="text" name="nueva_categoria" class="form-control"
+                               placeholder="Escriba una nueva categoría">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">Cantidad a agregar (reabastecer)</label>
+                        <input type="number" name="cantidad_a_agregar" class="form-control"
+                               value="0" min="0" step="0.01">
+                        <small class="text-muted">
+                            Suma stock manteniendo el precio unitario actual. No puedes usarlo a la vez que modificas la cantidad actual.
+                        </small>
                     </div>
                 </div>
 
