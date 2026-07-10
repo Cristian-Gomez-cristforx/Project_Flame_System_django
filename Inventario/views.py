@@ -17,7 +17,7 @@ from .forms import (
     ProductoForm,
     RecetaProductoForm,
 )
-from .models import Bebida, Categoria, Insumo, Merma, Producto, RecetaProducto
+from .models import Bebida, Categoria, Insumo, Merma, Producto, RecetaProducto, DetalleReceta
 
 
 @admin_requerido
@@ -89,14 +89,25 @@ def listar_productos(request):
             receta = producto.receta
             unidades = receta.cuantas_unidades_posibles()
             tiene_receta = True
+            detalles = list(receta.detalles.select_related('insumo').all())
+            costo_prep = receta.costo_preparacion
+            ganancia = receta.ganancia_estimada
         except RecetaProducto.DoesNotExist:
+            receta = None
             unidades = 0
             tiene_receta = False
+            detalles = []
+            costo_prep = None
+            ganancia = None
 
         productos_info.append({
             'producto': producto,
             'unidades_posibles': unidades,
             'tiene_receta': tiene_receta,
+            'receta': receta,
+            'detalles': detalles,
+            'costo_preparacion': costo_prep,
+            'ganancia_estimada': ganancia,
         })
 
     return render(request, 'temp_inventario/listar_producto.html', {'productos_info': productos_info})
@@ -105,13 +116,24 @@ def listar_productos(request):
 @admin_requerido
 def crear_producto(request):
     form = ProductoForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        producto = form.save()
-        messages.success(request, f'Producto "{producto.nombre_producto}" creado correctamente.')
-        return redirect('inventario:listar_productos')
+    formset = DetalleRecetaFormSet(request.POST or None, prefix='detalles')
+
+    if request.method == 'POST' and form.is_valid() and formset.is_valid():
+        try:
+            with transaction.atomic():
+                producto = form.save()
+                receta = RecetaProducto.objects.create(producto=producto, activa=True)
+                formset.instance = receta
+                formset.save()
+                receta.full_clean()
+            messages.success(request, f'Producto "{producto.nombre_producto}" y su receta creados correctamente.')
+            return redirect('inventario:listar_productos')
+        except ValidationError as e:
+            messages.error(request, '; '.join(e.messages))
 
     return render(request, 'temp_inventario/crear_producto.html', {
         'form': form,
+        'formset': formset,
         'categorias': Categoria.objects.filter(tipo=Categoria.Tipo.PRODUCTO).order_by('nombre_categoria'),
     })
 
@@ -119,15 +141,28 @@ def crear_producto(request):
 @admin_requerido
 def editar_producto(request, id):
     producto_obj = get_object_or_404(Producto, id_producto=id)
+    receta_obj, _ = RecetaProducto.objects.get_or_create(
+        producto=producto_obj,
+        defaults={'activa': True},
+    )
     form = ProductoForm(request.POST or None, instance=producto_obj)
+    formset = DetalleRecetaFormSet(request.POST or None, instance=receta_obj, prefix='detalles')
 
-    if request.method == 'POST' and form.is_valid():
-        producto = form.save()
-        messages.success(request, f'Producto "{producto.nombre_producto}" actualizado.')
-        return redirect('inventario:listar_productos')
+    if request.method == 'POST' and form.is_valid() and formset.is_valid():
+        try:
+            with transaction.atomic():
+                producto = form.save()
+                formset.instance = receta_obj
+                formset.save()
+                receta_obj.full_clean()
+            messages.success(request, f'Producto "{producto.nombre_producto}" actualizado.')
+            return redirect('inventario:listar_productos')
+        except ValidationError as e:
+            messages.error(request, '; '.join(e.messages))
 
     return render(request, 'temp_inventario/editar_producto.html', {
         'form': form,
+        'formset': formset,
         'producto': producto_obj,
         'categorias': Categoria.objects.filter(tipo=Categoria.Tipo.PRODUCTO).order_by('nombre_categoria'),
     })

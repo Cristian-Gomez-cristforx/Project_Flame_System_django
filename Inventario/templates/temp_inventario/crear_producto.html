@@ -14,34 +14,79 @@
 
     <div class="card shadow">
         <div class="card-body">
-            <form method="POST">
+            <form method="POST" novalidate>
                 {% csrf_token %}
-                
+
                 <div class="row">
                     <div class="col-md-8 mb-3">
                         <label class="form-label">Nombre del Producto</label>
-                        <input type="text" name="nombre_producto" class="form-control" required>
+                        <input type="text" name="nombre_producto" class="form-control"
+                               value="{{ form.nombre_producto.value|default_if_none:'' }}" required>
+                        {% if form.nombre_producto.errors %}
+                            <div class="text-danger small">{{ form.nombre_producto.errors|join:', ' }}</div>
+                        {% endif %}
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Venta</label>
-                        <input type="number" name="precio_producto" class="form-control" step="1" min="1" required>
+                        <input type="number" name="precio_producto" class="form-control" step="1" min="1"
+                               value="{{ form.precio_producto.value|default_if_none:'' }}" required>
+                        {% if form.precio_producto.errors %}
+                            <div class="text-danger small">{{ form.precio_producto.errors|join:', ' }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        {% include 'temp_inventario/_categoria_field.html' with field_key='producto' current_categoria_id=form.categoria.value errors=form.categoria.errors nueva_errors=form.nueva_categoria.errors %}
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="activo" id="activo" checked>
+                        <input class="form-check-input" type="checkbox" name="activo" id="activo"
+                               {% if form.activo.value|default:True %}checked{% endif %}>
                         <label class="form-check-label" for="activo">Producto Activo</label>
                     </div>
                 </div>
 
-                <hr>
-                <h5 class="mb-3">Ingredientes de la Receta</h5>
-                
-                <div id="ingredientes-container"></div>
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
 
-                <button type="button" class="btn btn-outline-primary mb-3" onclick="agregarIngrediente()">
-                    <i class="fas fa-plus"></i> Agregar Ingrediente
+                <hr>
+                <h5><i class="fas fa-list"></i> Ingredientes de la Receta</h5>
+                <p class="text-muted-sm">Cada insumo con la cantidad requerida por unidad de producto.</p>
+
+                {{ formset.management_form }}
+                {% if formset.non_form_errors %}
+                    <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+                {% endif %}
+
+                <div id="formset-detalles">
+                    {% for detalle_form in formset %}
+                        <div class="row g-2 align-items-end mb-2 detalle-row">
+                            {% for hidden in detalle_form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <div class="col-md-7">
+                                <label class="form-label">Insumo</label>
+                                {{ detalle_form.insumo }}
+                                {% if detalle_form.insumo.errors %}
+                                    <div class="text-danger small">{{ detalle_form.insumo.errors|join:', ' }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Cantidad requerida</label>
+                                {{ detalle_form.cantidad_requerida }}
+                                {% if detalle_form.cantidad_requerida.errors %}
+                                    <div class="text-danger small">{{ detalle_form.cantidad_requerida.errors|join:', ' }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <button type="button" id="add-detalle" class="btn btn-sm btn-outline-primary mt-2">
+                    <i class="fas fa-plus"></i> Agregar insumo
                 </button>
 
                 <div class="d-flex gap-2 mt-4">
@@ -54,38 +99,33 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
-    const insumosData = JSON.parse('{{ insumos|safe }}'.replace(/'/g, '"')); // mejor práctica
+(function () {
+    const container = document.getElementById('formset-detalles');
+    const addBtn = document.getElementById('add-detalle');
+    const totalForms = document.querySelector('input[name="detalles-TOTAL_FORMS"]');
 
-    function agregarIngrediente() {
-        const container = document.getElementById('ingredientes-container');
-        const div = document.createElement('div');
-        div.className = 'row mb-2 ingrediente-row';
+    addBtn?.addEventListener('click', function () {
+        const rows = container.querySelectorAll('.detalle-row');
+        if (rows.length === 0) return;
 
-        let options = '<option value="">Seleccione insumo...</option>';
-        insumosData.forEach(i => {
-            options += `<option value="${i.id_insumo}">${i.nombre_insumo} (${i.unidad})</option>`;
+        const template = rows[0].cloneNode(true);
+        const newIndex = parseInt(totalForms.value, 10);
+
+        template.querySelectorAll('input, select, textarea').forEach(el => {
+            if (el.name) el.name = el.name.replace(/detalles-\d+-/, `detalles-${newIndex}-`);
+            if (el.id) el.id = el.id.replace(/id_detalles-\d+-/, `id_detalles-${newIndex}-`);
+            if (el.type !== 'checkbox' && el.type !== 'hidden') el.value = '';
+            if (el.type === 'checkbox') el.checked = false;
         });
 
-        div.innerHTML = `
-            <div class="col-md-6">
-                <select name="insumo_id[]" class="form-select" required>${options}</select>
-            </div>
-            <div class="col-md-4">
-                <input type="number" name="cantidad_requerida[]" class="form-control" placeholder="Cantidad" min="1" required>
-            </div>
-            <div class="col-md-2">
-                <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.ingrediente-row').remove()">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `;
-        container.appendChild(div);
-    }
-
-    window.onload = function() {
-        agregarIngrediente();
-    }
+        template.querySelectorAll('.text-danger').forEach(el => el.remove());
+        container.appendChild(template);
+        totalForms.value = newIndex + 1;
+    });
+})();
 </script>
 {% endblock %}

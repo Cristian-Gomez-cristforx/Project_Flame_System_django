@@ -1,0 +1,102 @@
+{% comment %}
+Campo de categoría con botón "+" al lado del select para crear una nueva.
+
+Parámetros:
+    categorias           -- queryset de Categoria filtrado por tipo
+    current_categoria_id -- id de la categoría actual (opcional, para edición)
+    field_key            -- sufijo único para IDs (ej. "bebida", "producto")
+    errors               -- lista de errores del campo (opcional)
+    nueva_errors         -- lista de errores del campo nueva_categoria (opcional)
+{% endcomment %}
+<label class="form-label" for="id_categoria_{{ field_key }}">Categoría</label>
+<div class="categoria-field">
+    <div class="input-group">
+        <select name="categoria"
+                id="id_categoria_{{ field_key }}"
+                class="form-select categoria-select">
+            <option value="">-- Seleccionar categoría --</option>
+            {% for cat in categorias %}
+                <option value="{{ cat.id }}"
+                    {% if current_categoria_id and current_categoria_id|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
+                    {{ cat.nombre_categoria }}
+                </option>
+            {% endfor %}
+        </select>
+        <button type="button"
+                class="btn btn-outline-success toggle-nueva-categoria"
+                title="Crear nueva categoría">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+    {% if errors %}
+        <div class="text-danger small mt-1">{{ errors|join:', ' }}</div>
+    {% endif %}
+
+    <div class="nueva-categoria-wrapper mt-2 d-none">
+        <div class="input-group">
+            <span class="input-group-text bg-white">
+                <i class="fas fa-tag text-success"></i>
+            </span>
+            <input type="text"
+                   name="nueva_categoria"
+                   id="id_nueva_categoria_{{ field_key }}"
+                   class="form-control nueva-categoria-input"
+                   placeholder="Nombre de la nueva categoría"
+                   autocomplete="off">
+            <button type="button" class="btn btn-outline-secondary cancel-nueva-categoria" title="Cancelar">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <small class="text-muted">Se creará al guardar.</small>
+        {% if nueva_errors %}
+            <div class="text-danger small mt-1">{{ nueva_errors|join:', ' }}</div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+(function () {
+    if (window.__categoriaFieldInit) return;
+    window.__categoriaFieldInit = true;
+
+    function initCategoriaField(wrapper) {
+        const select = wrapper.querySelector('.categoria-select');
+        const toggleBtn = wrapper.querySelector('.toggle-nueva-categoria');
+        const nuevaWrapper = wrapper.querySelector('.nueva-categoria-wrapper');
+        const input = wrapper.querySelector('.nueva-categoria-input');
+        const cancelBtn = wrapper.querySelector('.cancel-nueva-categoria');
+        if (!select || !toggleBtn || !nuevaWrapper || !input) return;
+
+        function showNueva() {
+            nuevaWrapper.classList.remove('d-none');
+            select.value = '';
+            select.disabled = true;
+            input.required = true;
+            toggleBtn.classList.add('active');
+            setTimeout(() => input.focus(), 0);
+        }
+        function hideNueva() {
+            nuevaWrapper.classList.add('d-none');
+            select.disabled = false;
+            input.required = false;
+            input.value = '';
+            toggleBtn.classList.remove('active');
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            if (nuevaWrapper.classList.contains('d-none')) showNueva();
+            else hideNueva();
+        });
+        cancelBtn?.addEventListener('click', hideNueva);
+
+        // Si el select está disabled, no se envía; para que llegue vacío al backend,
+        // habilitarlo justo antes de submit.
+        const form = select.closest('form');
+        form?.addEventListener('submit', () => {
+            if (select.disabled) select.disabled = false;
+        });
+    }
+
+    document.querySelectorAll('.categoria-field').forEach(initCategoriaField);
+})();
+</script>

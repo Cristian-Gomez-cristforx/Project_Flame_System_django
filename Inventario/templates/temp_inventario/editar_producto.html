@@ -14,31 +14,31 @@
 
     <div class="card shadow">
         <div class="card-body">
-            <form method="POST">
+            <form method="POST" novalidate>
                 {% csrf_token %}
 
                 <div class="row">
                     <div class="col-md-8 mb-3">
                         <label class="form-label">Nombre del Producto</label>
-                        <input type="text" name="nombre_producto" class="form-control" value="{{ producto.nombre_producto }}" required>
+                        <input type="text" name="nombre_producto" class="form-control"
+                               value="{{ producto.nombre_producto }}" required>
+                        {% if form.nombre_producto.errors %}
+                            <div class="text-danger small">{{ form.nombre_producto.errors|join:', ' }}</div>
+                        {% endif %}
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Venta</label>
-                        <input type="number" name="precio_producto" class="form-control" value="{{ producto.precio_producto }}" min="1" required>
+                        <input type="number" name="precio_producto" class="form-control" min="1"
+                               value="{{ producto.precio_producto }}" required>
+                        {% if form.precio_producto.errors %}
+                            <div class="text-danger small">{{ form.precio_producto.errors|join:', ' }}</div>
+                        {% endif %}
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-12 mb-3">
-                        <label class="form-label">Categoría</label>
-                        <select name="categoria" class="form-select">
-                            <option value="">-- Seleccionar categoría (opcional) --</option>
-                            {% for cat in categorias %}
-                                <option value="{{ cat.id }}" {% if producto.categoria_id == cat.id %}selected{% endif %}>
-                                    {{ cat.nombre_categoria }}
-                                </option>
-                            {% endfor %}
-                        </select>
+                        {% include 'temp_inventario/_categoria_field.html' with field_key='producto' current_categoria_id=producto.categoria_id errors=form.categoria.errors nueva_errors=form.nueva_categoria.errors %}
                     </div>
                 </div>
 
@@ -48,6 +48,55 @@
                         <label class="form-check-label" for="activo">Producto Activo</label>
                     </div>
                 </div>
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                <hr>
+                <h5><i class="fas fa-list"></i> Ingredientes de la Receta</h5>
+                <p class="text-muted-sm">Cada insumo con la cantidad requerida por unidad de producto.</p>
+
+                {{ formset.management_form }}
+                {% if formset.non_form_errors %}
+                    <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+                {% endif %}
+
+                <div id="formset-detalles">
+                    {% for detalle_form in formset %}
+                        <div class="row g-2 align-items-end mb-2 detalle-row">
+                            {% for hidden in detalle_form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <div class="col-md-6">
+                                <label class="form-label">Insumo</label>
+                                {{ detalle_form.insumo }}
+                                {% if detalle_form.insumo.errors %}
+                                    <div class="text-danger small">{{ detalle_form.insumo.errors|join:', ' }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Cantidad requerida</label>
+                                {{ detalle_form.cantidad_requerida }}
+                                {% if detalle_form.cantidad_requerida.errors %}
+                                    <div class="text-danger small">{{ detalle_form.cantidad_requerida.errors|join:', ' }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-2">
+                                {% if detalle_form.instance.pk %}
+                                    <div class="form-check">
+                                        {{ detalle_form.DELETE }}
+                                        <label class="form-check-label text-danger" for="{{ detalle_form.DELETE.id_for_label }}">
+                                            Eliminar
+                                        </label>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <button type="button" id="add-detalle" class="btn btn-sm btn-outline-primary mt-2">
+                    <i class="fas fa-plus"></i> Agregar insumo
+                </button>
 
                 <div class="d-flex gap-2 mt-4">
                     <button type="submit" class="btn btn-warning">
@@ -59,4 +108,34 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const container = document.getElementById('formset-detalles');
+    const addBtn = document.getElementById('add-detalle');
+    const totalForms = document.querySelector('input[name="detalles-TOTAL_FORMS"]');
+
+    addBtn?.addEventListener('click', function () {
+        const rows = container.querySelectorAll('.detalle-row');
+        if (rows.length === 0) return;
+
+        const template = rows[0].cloneNode(true);
+        const newIndex = parseInt(totalForms.value, 10);
+
+        template.querySelectorAll('input, select, textarea').forEach(el => {
+            if (el.name) el.name = el.name.replace(/detalles-\d+-/, `detalles-${newIndex}-`);
+            if (el.id) el.id = el.id.replace(/id_detalles-\d+-/, `id_detalles-${newIndex}-`);
+            if (el.type !== 'checkbox' && el.type !== 'hidden') el.value = '';
+            if (el.type === 'checkbox') el.checked = false;
+        });
+
+        template.querySelectorAll('.form-check').forEach(el => el.remove());
+        template.querySelectorAll('.text-danger').forEach(el => el.remove());
+        container.appendChild(template);
+        totalForms.value = newIndex + 1;
+    });
+})();
+</script>
 {% endblock %}

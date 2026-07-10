@@ -99,6 +99,15 @@ class InsumoAgregarStockForm(forms.ModelForm):
 
 
 class ProductoForm(forms.ModelForm):
+    nueva_categoria = forms.CharField(
+        required=False,
+        label='Nueva categoría',
+        widget=forms.TextInput(attrs={
+            **BOOTSTRAP_INPUT,
+            'placeholder': 'Nombre de la nueva categoría',
+        }),
+    )
+
     class Meta:
         model = Producto
         fields = [
@@ -116,13 +125,44 @@ class ProductoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['categoria'].required = False
         self.fields['categoria'].queryset = Categoria.objects.filter(
             tipo=Categoria.Tipo.PRODUCTO
         )
         self.fields['categoria'].empty_label = '-- Seleccionar categoría --'
 
+    def clean(self):
+        cleaned = super().clean()
+        categoria = cleaned.get('categoria')
+        nueva = (cleaned.get('nueva_categoria') or '').strip()
+
+        if not categoria and not nueva:
+            raise forms.ValidationError(
+                'Debe seleccionar una categoría existente o escribir una nueva.'
+            )
+        return cleaned
+
+    def save(self, commit=True):
+        nueva = (self.cleaned_data.get('nueva_categoria') or '').strip()
+        if nueva:
+            categoria, _ = Categoria.objects.get_or_create(
+                nombre_categoria=nueva,
+                defaults={'tipo': Categoria.Tipo.PRODUCTO},
+            )
+            self.instance.categoria = categoria
+        return super().save(commit=commit)
+
 
 class BebidaForm(forms.ModelForm):
+    nueva_categoria = forms.CharField(
+        required=False,
+        label='Nueva categoría',
+        widget=forms.TextInput(attrs={
+            **BOOTSTRAP_INPUT,
+            'placeholder': 'Nombre de la nueva categoría',
+        }),
+    )
+
     class Meta:
         model = Bebida
         fields = [
@@ -144,10 +184,32 @@ class BebidaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['categoria'].required = False
         self.fields['categoria'].queryset = Categoria.objects.filter(
             tipo=Categoria.Tipo.BEBIDA
         )
         self.fields['categoria'].empty_label = '-- Seleccionar categoría --'
+
+    def clean(self):
+        cleaned = super().clean()
+        categoria = cleaned.get('categoria')
+        nueva = (cleaned.get('nueva_categoria') or '').strip()
+
+        if not categoria and not nueva:
+            raise forms.ValidationError(
+                'Debe seleccionar una categoría existente o escribir una nueva.'
+            )
+        return cleaned
+
+    def save(self, commit=True):
+        nueva = (self.cleaned_data.get('nueva_categoria') or '').strip()
+        if nueva:
+            categoria, _ = Categoria.objects.get_or_create(
+                nombre_categoria=nueva,
+                defaults={'tipo': Categoria.Tipo.BEBIDA},
+            )
+            self.instance.categoria = categoria
+        return super().save(commit=commit)
 
 
 class MermaForm(forms.ModelForm):

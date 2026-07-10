@@ -7,7 +7,7 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-boxes text-success"></i> Listado de Productos</h2>
-        
+
         <div>
             <a href="{% url 'inventario:crear_producto' %}" class="btn btn-success">
                 <i class="fas fa-plus"></i> Nuevo Producto
@@ -20,8 +20,8 @@
 
     <div class="mb-3">
         <form method="GET" class="d-flex gap-2">
-            <input type="text" name="q" class="form-control" 
-                   placeholder="Buscar por nombre o categoría..." 
+            <input type="text" name="q" class="form-control"
+                   placeholder="Buscar por nombre o categoría..."
                    value="{{ request.GET.q }}">
             <button type="submit" class="btn btn-outline-primary">
                 <i class="fas fa-search"></i> Buscar
@@ -34,13 +34,17 @@
 
     <div class="card shadow">
         <div class="card-body">
+            <p class="text-muted small mb-2">
+                <i class="fas fa-info-circle"></i> Haz click sobre una fila para ver los detalles de su receta.
+            </p>
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-dark">
                         <tr>
+                            <th style="width:2rem;"></th>
                             <th>ID</th>
                             <th>Nombre</th>
-                            <th>Nombre Categoría</th>
+                            <th>Categoría</th>
                             <th>Precio Venta</th>
                             <th>Estado</th>
                             <th>Puede Preparar</th>
@@ -49,7 +53,14 @@
                     </thead>
                     <tbody>
                         {% for item in productos_info %}
-                        <tr>
+                        <tr class="producto-row" style="cursor:pointer;"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#receta-{{ item.producto.id_producto }}"
+                            aria-expanded="false"
+                            aria-controls="receta-{{ item.producto.id_producto }}">
+                            <td>
+                                <i class="fas fa-chevron-right chevron-icon"></i>
+                            </td>
                             <td>{{ item.producto.id_producto }}</td>
                             <td><strong>{{ item.producto.nombre_producto }}</strong></td>
                             <td>
@@ -78,15 +89,70 @@
                                     <span class="badge bg-secondary">Sin receta</span>
                                 {% endif %}
                             </td>
-                            <td class="text-center">
+                            <td class="text-center" onclick="event.stopPropagation();">
                                 <a href="{% url 'inventario:editar_producto' item.producto.id_producto %}" class="btn btn-sm btn-warning">
                                     <i class="fas fa-edit"></i> Editar
                                 </a>
                             </td>
                         </tr>
+                        <tr class="receta-collapse-row">
+                            <td colspan="8" class="p-0 border-0">
+                                <div class="collapse" id="receta-{{ item.producto.id_producto }}">
+                                    <div class="p-3 bg-light border-top">
+                                        {% if item.tiene_receta and item.detalles %}
+                                            <div class="row mb-3">
+                                                <div class="col-md-4">
+                                                    <small class="text-muted d-block">Costo de preparación</small>
+                                                    <strong>${{ item.costo_preparacion|floatformat:2 }}</strong>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <small class="text-muted d-block">Ganancia estimada</small>
+                                                    <strong class="{% if item.ganancia_estimada > 0 %}text-success{% else %}text-danger{% endif %}">
+                                                        ${{ item.ganancia_estimada|floatformat:2 }}
+                                                    </strong>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <small class="text-muted d-block">Receta</small>
+                                                    <span class="badge {% if item.receta.activa %}bg-success{% else %}bg-secondary{% endif %}">
+                                                        {% if item.receta.activa %}Activa{% else %}Inactiva{% endif %}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <h6 class="mb-2"><i class="fas fa-list"></i> Ingredientes</h6>
+                                            <table class="table table-sm table-bordered mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Insumo</th>
+                                                        <th class="text-end">Cantidad requerida</th>
+                                                        <th class="text-end">Stock actual</th>
+                                                        <th class="text-end">Costo</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for d in item.detalles %}
+                                                    <tr>
+                                                        <td>{{ d.insumo.nombre_insumo }}</td>
+                                                        <td class="text-end">{{ d.cantidad_requerida }} {{ d.insumo.get_unidad_medida_display }}</td>
+                                                        <td class="text-end">{{ d.insumo.cantidad_insumo }}</td>
+                                                        <td class="text-end">${{ d.costo_detalle|floatformat:2 }}</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        {% elif item.tiene_receta %}
+                                            <em class="text-muted">La receta existe pero no tiene ingredientes registrados.</em>
+                                        {% else %}
+                                            <em class="text-muted">Este producto aún no tiene receta.
+                                                <a href="{% url 'inventario:editar_producto' item.producto.id_producto %}">Agrégala aquí</a>.
+                                            </em>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">
+                            <td colspan="8" class="text-center text-muted py-4">
                                 No hay productos registrados aún.
                             </td>
                         </tr>
@@ -97,4 +163,12 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .producto-row .chevron-icon { transition: transform 0.15s ease; }
+    .producto-row[aria-expanded="true"] .chevron-icon { transform: rotate(90deg); }
+    .receta-collapse-row td { background: transparent; }
+</style>
 {% endblock %}

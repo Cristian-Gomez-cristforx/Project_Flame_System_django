@@ -50,22 +50,8 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Categoría</label>
-                        <select name="categoria" class="form-select">
-                            <option value="">-- Seleccionar categoría --</option>
-                            {% for categoria in categorias %}
-                                <option value="{{ categoria.id }}"
-                                    {% if categoria.id == insumo.categoria_id %}selected{% endif %}>
-                                    {{ categoria.nombre_categoria }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Nueva categoría (opcional)</label>
-                        <input type="text" name="nueva_categoria" class="form-control"
-                               placeholder="Escriba una nueva categoría">
+                    <div class="col-md-12 mb-3">
+                        {% include 'temp_inventario/_categoria_field.html' with field_key='insumo' current_categoria_id=insumo.categoria_id %}
                     </div>
                 </div>
 
