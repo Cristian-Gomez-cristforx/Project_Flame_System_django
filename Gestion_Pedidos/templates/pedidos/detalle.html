@@ -66,17 +66,28 @@
                 </table>
 
                 {% if pedido.estado == estados.PENDIENTE %}
-                    <form method="post" action="{% url 'pedidos:agregar_producto' pedido.id_pedido %}" class="row g-2 align-items-end">
+                    <form method="post" action="{% url 'pedidos:agregar_producto' pedido.id_pedido %}" class="row g-2 align-items-start">
                         {% csrf_token %}
+                        {% if form_producto.non_field_errors %}
+                            <div class="col-12">
+                                <div class="alert alert-danger py-2 mb-0">{{ form_producto.non_field_errors|join:' ' }}</div>
+                            </div>
+                        {% endif %}
                         <div class="col-md-7">
                             <label class="form-label mb-1">Producto</label>
                             {{ form_producto.producto }}
+                            {% if form_producto.producto.errors %}
+                                <div class="text-danger small mt-1">{{ form_producto.producto.errors|join:', ' }}</div>
+                            {% endif %}
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-1">Cantidad</label>
                             {{ form_producto.cantidad }}
+                            {% if form_producto.cantidad.errors %}
+                                <div class="text-danger small mt-1">{{ form_producto.cantidad.errors|join:', ' }}</div>
+                            {% endif %}
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-2 d-flex align-items-end">
                             <button class="btn btn-primary w-100">
                                 <i class="fas fa-plus"></i> Agregar
                             </button>
@@ -127,17 +138,28 @@
                 </table>
 
                 {% if pedido.estado == estados.PENDIENTE %}
-                    <form method="post" action="{% url 'pedidos:agregar_bebida' pedido.id_pedido %}" class="row g-2 align-items-end">
+                    <form method="post" action="{% url 'pedidos:agregar_bebida' pedido.id_pedido %}" class="row g-2 align-items-start">
                         {% csrf_token %}
+                        {% if form_bebida.non_field_errors %}
+                            <div class="col-12">
+                                <div class="alert alert-danger py-2 mb-0">{{ form_bebida.non_field_errors|join:' ' }}</div>
+                            </div>
+                        {% endif %}
                         <div class="col-md-7">
                             <label class="form-label mb-1">Bebida</label>
                             {{ form_bebida.bebida }}
+                            {% if form_bebida.bebida.errors %}
+                                <div class="text-danger small mt-1">{{ form_bebida.bebida.errors|join:', ' }}</div>
+                            {% endif %}
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-1">Cantidad</label>
                             {{ form_bebida.cantidad }}
+                            {% if form_bebida.cantidad.errors %}
+                                <div class="text-danger small mt-1">{{ form_bebida.cantidad.errors|join:', ' }}</div>
+                            {% endif %}
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-2 d-flex align-items-end">
                             <button class="btn btn-primary w-100">
                                 <i class="fas fa-plus"></i> Agregar
                             </button>
@@ -177,6 +199,9 @@
         <div class="card">
             <div class="card-header">Acciones</div>
             <div class="card-body d-grid gap-2">
+                {% if error_accion %}
+                    <div class="alert alert-danger py-2 mb-0">{{ error_accion }}</div>
+                {% endif %}
                 {% if pedido.estado == estados.PENDIENTE %}
                     <form method="post" action="{% url 'pedidos:cambiar_estado' pedido.id_pedido %}">
                         {% csrf_token %}

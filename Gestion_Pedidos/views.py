@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from login_modify_django.decorators import rol_requerido
+from login_modify_django.decorators import admin_requerido, rol_requerido
 from login_modify_django.models import Perfil
 
 from . import services
@@ -13,6 +13,7 @@ from .forms import (
     AgregarBebidaForm,
     AgregarProductoForm,
     FiltroPedidosForm,
+    MesaForm,
     PagoForm,
     PedidoCrearForm,
 )
@@ -57,7 +58,19 @@ def crear_pedido(request):
         form = PedidoCrearForm(request.POST)
         if form.is_valid():
             try:
-                pedido = services.crear_pedido(request.user, form.cleaned_data)
+                datos = dict(form.cleaned_data)
+                nueva_mesa_num = datos.pop('nueva_mesa', None)
+                if (
+                    datos.get('tipo') == Pedido.TipoPedido.MESA
+                    and nueva_mesa_num
+                    and not datos.get('mesa')
+                ):
+                    datos['mesa'] = Mesa.objects.create(
+                        numero_mesa=nueva_mesa_num,
+                        activa=True,
+                        ocupada=False,
+                    )
+                pedido = services.crear_pedido(request.user, datos)
                 messages.success(request, f'Pedido {pedido.numero_factura} creado. Agrega productos y bebidas.')
                 return redirect('pedidos:detalle', pedido_id=pedido.id_pedido)
             except ValidationError as e:
@@ -68,31 +81,40 @@ def crear_pedido(request):
     return render(request, 'pedidos/crear.html', {
         'form': form,
         'tipos': Pedido.TipoPedido.choices,
+        'mesas_libres': Mesa.objects.filter(activa=True, ocupada=False).order_by('numero_mesa'),
     })
+
+
+def _render_detalle(request, pedido, *, form_producto=None, form_bebida=None, error_accion=None):
+    totales = services.calcular_totales(pedido)
+    return render(request, 'pedidos/detalle.html', {
+        'pedido': pedido,
+        'totales': totales,
+        'form_producto': form_producto or AgregarProductoForm(),
+        'form_bebida': form_bebida or AgregarBebidaForm(),
+        'form_pago': PagoForm(instance=pedido),
+        'estados': Pedido.EstadoPedido,
+        'error_accion': error_accion,
+    })
+
+
+def _get_pedido_detalle(pedido_id):
+    return get_object_or_404(
+        Pedido.objects.select_related('mesa', 'mesero').prefetch_related('productos__producto', 'bebidas__bebida'),
+        pk=pedido_id,
+    )
 
 
 @rol_requerido(*ROLES_PEDIDOS)
 def detalle_pedido(request, pedido_id):
-    pedido = get_object_or_404(
-        Pedido.objects.select_related('mesa', 'mesero').prefetch_related('productos__producto', 'bebidas__bebida'),
-        pk=pedido_id,
-    )
-    totales = services.calcular_totales(pedido)
-
-    return render(request, 'pedidos/detalle.html', {
-        'pedido': pedido,
-        'totales': totales,
-        'form_producto': AgregarProductoForm(),
-        'form_bebida': AgregarBebidaForm(),
-        'form_pago': PagoForm(instance=pedido),
-        'estados': Pedido.EstadoPedido,
-    })
+    pedido = _get_pedido_detalle(pedido_id)
+    return _render_detalle(request, pedido)
 
 
 @rol_requerido(*ROLES_PEDIDOS)
 @require_POST
 def agregar_producto(request, pedido_id):
-    pedido = get_object_or_404(Pedido, pk=pedido_id)
+    pedido = _get_pedido_detalle(pedido_id)
     form = AgregarProductoForm(request.POST)
     if form.is_valid():
         try:
@@ -102,17 +124,16 @@ def agregar_producto(request, pedido_id):
                 form.cleaned_data['cantidad'],
             )
             messages.success(request, 'Producto agregado.')
+            return redirect('pedidos:detalle', pedido_id=pedido_id)
         except ValidationError as e:
-            messages.error(request, '; '.join(e.messages))
-    else:
-        messages.error(request, 'Formulario inválido.')
-    return redirect('pedidos:detalle', pedido_id=pedido_id)
+            form.add_error(None, '; '.join(e.messages))
+    return _render_detalle(request, pedido, form_producto=form)
 
 
 @rol_requerido(*ROLES_PEDIDOS)
 @require_POST
 def agregar_bebida(request, pedido_id):
-    pedido = get_object_or_404(Pedido, pk=pedido_id)
+    pedido = _get_pedido_detalle(pedido_id)
     form = AgregarBebidaForm(request.POST)
     if form.is_valid():
         try:
@@ -122,11 +143,10 @@ def agregar_bebida(request, pedido_id):
                 form.cleaned_data['cantidad'],
             )
             messages.success(request, 'Bebida agregada.')
+            return redirect('pedidos:detalle', pedido_id=pedido_id)
         except ValidationError as e:
-            messages.error(request, '; '.join(e.messages))
-    else:
-        messages.error(request, 'Formulario inválido.')
-    return redirect('pedidos:detalle', pedido_id=pedido_id)
+            form.add_error(None, '; '.join(e.messages))
+    return _render_detalle(request, pedido, form_bebida=form)
 
 
 @rol_requerido(*ROLES_PEDIDOS)
@@ -146,12 +166,18 @@ def eliminar_item(request, pedido_id, tipo_item, item_id):
 def cambiar_estado(request, pedido_id):
     pedido = get_object_or_404(Pedido, pk=pedido_id)
     nuevo = request.POST.get('estado')
+    next_url = request.POST.get('next')
     try:
         services.cambiar_estado(pedido, nuevo)
         messages.success(request, f'Pedido → {pedido.get_estado_display()}.')
+        return redirect(next_url or reverse('pedidos:detalle', args=[pedido_id]))
     except ValidationError as e:
-        messages.error(request, '; '.join(e.messages))
-    return redirect(request.POST.get('next') or reverse('pedidos:detalle', args=[pedido_id]))
+        error = '; '.join(e.messages)
+        if next_url:
+            messages.error(request, error)
+            return redirect(next_url)
+        pedido = _get_pedido_detalle(pedido_id)
+        return _render_detalle(request, pedido, error_accion=error)
 
 
 @rol_requerido(*ROLES_PEDIDOS)
@@ -180,7 +206,12 @@ def cobrar_pedido(request, pedido_id):
 
 @rol_requerido(*ROLES_PEDIDOS)
 def lista_mesas(request):
-    mesas = Mesa.objects.filter(activa=True).order_by('numero_mesa')
+    perfil = getattr(request.user, 'perfil', None)
+    es_admin = request.user.is_superuser or (perfil and perfil.es_admin)
+
+    mesas_qs = Mesa.objects.all() if es_admin else Mesa.objects.filter(activa=True)
+    mesas = mesas_qs.order_by('-activa', 'numero_mesa')
+
     activos = {
         Pedido.EstadoPedido.PENDIENTE,
         Pedido.EstadoPedido.COCINA,
@@ -197,7 +228,61 @@ def lista_mesas(request):
         for mesa in mesas
     ]
 
-    return render(request, 'pedidos/mesas.html', {'mesas_data': data})
+    return render(request, 'pedidos/mesas.html', {
+        'mesas_data': data,
+        'es_admin': es_admin,
+    })
+
+
+@admin_requerido
+def mesa_crear(request):
+    form = MesaForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        mesa = form.save()
+        messages.success(request, f'Mesa {mesa.numero_mesa} creada.')
+        return redirect('pedidos:mesas')
+    return render(request, 'pedidos/mesa_form.html', {
+        'form': form,
+        'modo': 'crear',
+    })
+
+
+@admin_requerido
+def mesa_editar(request, mesa_id):
+    mesa = get_object_or_404(Mesa, pk=mesa_id)
+    form = MesaForm(request.POST or None, instance=mesa)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, f'Mesa {mesa.numero_mesa} actualizada.')
+        return redirect('pedidos:mesas')
+    return render(request, 'pedidos/mesa_form.html', {
+        'form': form,
+        'modo': 'editar',
+        'mesa': mesa,
+    })
+
+
+@admin_requerido
+@require_POST
+def mesa_eliminar(request, mesa_id):
+    mesa = get_object_or_404(Mesa, pk=mesa_id)
+    total_pedidos = mesa.pedidos.count()
+    if total_pedidos > 0:
+        messages.error(
+            request,
+            f'No se puede eliminar la Mesa {mesa.numero_mesa}: tiene {total_pedidos} pedido(s) asociado(s). '
+            'Puedes desactivarla en su lugar.'
+        )
+    elif mesa.ocupada:
+        messages.error(
+            request,
+            f'No se puede eliminar la Mesa {mesa.numero_mesa}: está ocupada.'
+        )
+    else:
+        numero = mesa.numero_mesa
+        mesa.delete()
+        messages.success(request, f'Mesa {numero} eliminada.')
+    return redirect('pedidos:mesas')
 
 
 @rol_requerido(*ROLES_COCINA)

@@ -5,6 +5,9 @@
 
 {% block extra_css %}
 <style>
+    .mesa-wrapper {
+        position: relative;
+    }
     .mesa-card {
         border-radius: 12px;
         border: 1px solid var(--flame-border);
@@ -23,6 +26,11 @@
     }
     .mesa-libre { border-color: var(--flame-success); }
     .mesa-ocupada { border-color: var(--flame-primary); background: #fff8f3; }
+    .mesa-inactiva {
+        border-color: var(--flame-border);
+        background: #f6f6f6;
+        opacity: 0.75;
+    }
     .mesa-numero { font-size: 2.5rem; font-weight: 700; color: var(--flame-text); }
     .mesa-estado {
         font-size: 0.8rem;
@@ -32,36 +40,89 @@
     }
     .mesa-libre .mesa-estado { color: var(--flame-success); }
     .mesa-ocupada .mesa-estado { color: var(--flame-primary); }
+    .mesa-inactiva .mesa-estado { color: var(--flame-text-muted, #6c757d); }
+
+    .mesa-actions {
+        position: absolute;
+        top: 0.4rem;
+        right: 0.4rem;
+        display: flex;
+        gap: 0.25rem;
+        z-index: 2;
+    }
+    .mesa-actions .btn {
+        padding: 0.15rem 0.45rem;
+        font-size: 0.75rem;
+        line-height: 1;
+    }
+    .mesa-actions form { margin: 0; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h1><i class="fas fa-chair me-2"></i> Mesas</h1>
-    <a href="{% url 'pedidos:crear' %}" class="btn btn-primary">
-        <i class="fas fa-plus me-1"></i> Nuevo pedido
-    </a>
+    <div class="d-flex gap-2">
+        {% if es_admin %}
+            <a href="{% url 'pedidos:mesa_crear' %}" class="btn btn-outline-primary">
+                <i class="fas fa-plus me-1"></i> Nueva mesa
+            </a>
+        {% endif %}
+        <a href="{% url 'pedidos:crear' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> Nuevo pedido
+        </a>
+    </div>
 </div>
 
 <div class="row g-3">
     {% for item in mesas_data %}
         <div class="col-6 col-md-3 col-lg-2">
-            {% if item.pedido %}
-                <a href="{% url 'pedidos:detalle' item.pedido.id_pedido %}" class="mesa-card mesa-ocupada">
-                    <div class="mesa-numero">{{ item.mesa.numero_mesa }}</div>
-                    <div class="mesa-estado">Ocupada</div>
-                    <div class="mt-2 text-muted-sm">{{ item.pedido.get_estado_display }}</div>
-                </a>
-            {% else %}
-                <div class="mesa-card mesa-libre">
-                    <div class="mesa-numero">{{ item.mesa.numero_mesa }}</div>
-                    <div class="mesa-estado">Libre</div>
-                </div>
-            {% endif %}
+            <div class="mesa-wrapper">
+                {% if es_admin %}
+                    <div class="mesa-actions">
+                        <a href="{% url 'pedidos:mesa_editar' item.mesa.pk %}"
+                           class="btn btn-warning" title="Editar mesa">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form method="POST" action="{% url 'pedidos:mesa_eliminar' item.mesa.pk %}"
+                              onsubmit="return confirm('¿Eliminar Mesa {{ item.mesa.numero_mesa }}?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger" title="Eliminar mesa">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                {% endif %}
+
+                {% if not item.mesa.activa %}
+                    <div class="mesa-card mesa-inactiva">
+                        <div class="mesa-numero">{{ item.mesa.numero_mesa }}</div>
+                        <div class="mesa-estado">Inactiva</div>
+                    </div>
+                {% elif item.pedido %}
+                    <a href="{% url 'pedidos:detalle' item.pedido.id_pedido %}" class="mesa-card mesa-ocupada">
+                        <div class="mesa-numero">{{ item.mesa.numero_mesa }}</div>
+                        <div class="mesa-estado">Ocupada</div>
+                        <div class="mt-2 text-muted-sm">{{ item.pedido.get_estado_display }}</div>
+                    </a>
+                {% else %}
+                    <div class="mesa-card mesa-libre">
+                        <div class="mesa-numero">{{ item.mesa.numero_mesa }}</div>
+                        <div class="mesa-estado">Libre</div>
+                    </div>
+                {% endif %}
+            </div>
         </div>
     {% empty %}
         <div class="col-12 text-center text-muted py-5">
-            No hay mesas activas. Configúralas desde el admin.
+            No hay mesas registradas.
+            {% if es_admin %}
+                <div class="mt-3">
+                    <a href="{% url 'pedidos:mesa_crear' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i> Crear la primera mesa
+                    </a>
+                </div>
+            {% endif %}
         </div>
     {% endfor %}
 </div>

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if modo == 'crear' %}Nueva mesa{% else %}Editar Mesa {{ mesa.numero_mesa }}{% endif %}{% endblock %}
+{% block nav_mesas %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>
+        <i class="fas fa-chair text-secondary me-2"></i>
+        {% if modo == 'crear' %}Nueva mesa{% else %}Editar Mesa {{ mesa.numero_mesa }}{% endif %}
+    </h1>
+    <a href="{% url 'pedidos:mesas' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label">Número de la mesa <span class="text-danger">*</span></label>
+                        {{ form.numero_mesa }}
+                        {% if form.numero_mesa.errors %}
+                            <div class="text-danger small mt-1">{{ form.numero_mesa.errors|join:', ' }}</div>
+                        {% endif %}
+                        <div class="form-text small">Debe ser único y mayor a 0.</div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        {{ form.activa }}
+                        <label class="form-check-label" for="{{ form.activa.id_for_label }}">
+                            Mesa activa
+                        </label>
+                        {% if form.activa.errors %}
+                            <div class="text-danger small mt-1">{{ form.activa.errors|join:', ' }}</div>
+                        {% endif %}
+                        <div class="form-text small">Las mesas inactivas no aparecen al crear pedidos.</div>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        {% if modo == 'crear' %}Guardar{% else %}Guardar cambios{% endif %}
+                    </button>
+                    <a href="{% url 'pedidos:mesas' %}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

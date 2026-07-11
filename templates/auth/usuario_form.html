@@ -25,7 +25,7 @@
 
 <div class="card card-elevated">
     <div class="card-body">
-        <form method="post" novalidate>
+        <form method="post" novalidate id="usuario-form">
             {% csrf_token %}
 
             {% if form.non_field_errors %}
@@ -40,6 +40,7 @@
                         {{ form.username.label }} <span class="text-danger">*</span>
                     </label>
                     {{ form.username }}
+                    <div class="text-danger small mt-1" data-error-for="{{ form.username.id_for_label }}"></div>
                     {% if form.username.errors %}<div class="text-danger small mt-1">{{ form.username.errors|join:" " }}</div>{% endif %}
                 </div>
 
@@ -48,7 +49,7 @@
                         {{ form.email.label }} <span class="text-danger">*</span>
                     </label>
                     {{ form.email }}
-                    <div id="email-feedback" class="small mt-1"></div>
+                    <div class="text-danger small mt-1" data-error-for="{{ form.email.id_for_label }}"></div>
                     {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors|join:" " }}</div>{% endif %}
                 </div>
 
@@ -57,6 +58,7 @@
                         {{ form.first_name.label }} <span class="text-danger">*</span>
                     </label>
                     {{ form.first_name }}
+                    <div class="text-danger small mt-1" data-error-for="{{ form.first_name.id_for_label }}"></div>
                     {% if form.first_name.errors %}<div class="text-danger small mt-1">{{ form.first_name.errors|join:" " }}</div>{% endif %}
                 </div>
 
@@ -65,6 +67,7 @@
                         {{ form.last_name.label }} <span class="text-danger">*</span>
                     </label>
                     {{ form.last_name }}
+                    <div class="text-danger small mt-1" data-error-for="{{ form.last_name.id_for_label }}"></div>
                     {% if form.last_name.errors %}<div class="text-danger small mt-1">{{ form.last_name.errors|join:" " }}</div>{% endif %}
                 </div>
 
@@ -73,7 +76,7 @@
                         {{ form.documento.label }}
                     </label>
                     {{ form.documento }}
-                    <div id="documento-feedback" class="small mt-1"></div>
+                    <div class="text-danger small mt-1" data-error-for="{{ form.documento.id_for_label }}"></div>
                     {% if form.documento.errors %}<div class="text-danger small mt-1">{{ form.documento.errors|join:" " }}</div>{% endif %}
                 </div>
 
@@ -82,7 +85,7 @@
                         {{ form.telefono.label }}
                     </label>
                     {{ form.telefono }}
-                    <div id="telefono-feedback" class="small mt-1"></div>
+                    <div class="text-danger small mt-1" data-error-for="{{ form.telefono.id_for_label }}"></div>
                     {% if form.telefono.errors %}<div class="text-danger small mt-1">{{ form.telefono.errors|join:" " }}</div>{% endif %}
                 </div>
 
@@ -144,65 +147,117 @@
 {% block extra_js %}
 <script>
     (function () {
-        function bindValidacion(inputId, feedbackId, regex, okMsg, errMsg, opts) {
-            const input = document.getElementById(inputId);
-            const feedback = document.getElementById(feedbackId);
-            if (!input || !feedback) return;
-            const requerido = opts && opts.requerido;
+        const form = document.getElementById('usuario-form');
+        if (!form) return;
 
-            function validar() {
-                const value = input.value.trim();
-                input.classList.remove('is-valid', 'is-invalid');
-                feedback.classList.remove('text-success', 'text-danger');
+        const LETRAS = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/;
+        const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const DIGITOS = /^\d+$/;
 
-                if (!value) {
-                    feedback.textContent = '';
-                    if (requerido) {
-                        input.classList.add('is-invalid');
-                        feedback.classList.add('text-danger');
-                        feedback.textContent = errMsg;
+        const reglas = [
+            {
+                id: '{{ form.username.id_for_label }}',
+                required: true,
+                requiredMsg: 'El nombre de usuario es obligatorio.',
+            },
+            {
+                id: '{{ form.email.id_for_label }}',
+                required: true,
+                requiredMsg: 'El correo es obligatorio.',
+                pattern: EMAIL,
+                patternMsg: 'Formato de correo inválido (ej: usuario@dominio.com).',
+            },
+            {
+                id: '{{ form.first_name.id_for_label }}',
+                required: true,
+                requiredMsg: 'Los nombres son obligatorios.',
+                pattern: LETRAS,
+                patternMsg: 'Los nombres solo pueden contener letras.',
+            },
+            {
+                id: '{{ form.last_name.id_for_label }}',
+                required: true,
+                requiredMsg: 'Los apellidos son obligatorios.',
+                pattern: LETRAS,
+                patternMsg: 'Los apellidos solo pueden contener letras.',
+            },
+            {
+                id: '{{ form.documento.id_for_label }}',
+                required: false,
+                pattern: DIGITOS,
+                patternMsg: 'El documento solo admite números.',
+                min: 8,
+                max: 10,
+                lengthMsg: 'El documento debe tener entre 8 y 10 dígitos.',
+            },
+            {
+                id: '{{ form.telefono.id_for_label }}',
+                required: false,
+                pattern: DIGITOS,
+                patternMsg: 'El teléfono solo admite números.',
+                min: 10,
+                max: 10,
+                lengthMsg: 'El teléfono debe tener exactamente 10 dígitos.',
+            },
+        ];
+
+        function limpiarErrores() {
+            form.querySelectorAll('[data-error-for]').forEach(el => {
+                el.textContent = '';
+            });
+        }
+
+        function mostrarError(id, mensaje) {
+            const el = form.querySelector('[data-error-for="' + id + '"]');
+            if (el) el.textContent = mensaje;
+        }
+
+        form.addEventListener('submit', function (e) {
+            limpiarErrores();
+            let hayError = false;
+            let primerCampoInvalido = null;
+
+            for (const regla of reglas) {
+                const input = document.getElementById(regla.id);
+                if (!input) continue;
+                const valor = input.value.trim();
+
+                if (!valor) {
+                    if (regla.required) {
+                        mostrarError(regla.id, regla.requiredMsg);
+                        hayError = true;
+                        if (!primerCampoInvalido) primerCampoInvalido = input;
                     }
-                    return;
+                    continue;
                 }
-                if (regex.test(value)) {
-                    input.classList.add('is-valid');
-                    feedback.classList.add('text-success');
-                    feedback.textContent = okMsg;
-                } else {
-                    input.classList.add('is-invalid');
-                    feedback.classList.add('text-danger');
-                    feedback.textContent = errMsg;
+                if (regla.pattern && !regla.pattern.test(valor)) {
+                    mostrarError(regla.id, regla.patternMsg);
+                    hayError = true;
+                    if (!primerCampoInvalido) primerCampoInvalido = input;
+                    continue;
+                }
+                if (regla.min && valor.length < regla.min) {
+                    mostrarError(regla.id, regla.lengthMsg);
+                    hayError = true;
+                    if (!primerCampoInvalido) primerCampoInvalido = input;
+                    continue;
+                }
+                if (regla.max && valor.length > regla.max) {
+                    mostrarError(regla.id, regla.lengthMsg);
+                    hayError = true;
+                    if (!primerCampoInvalido) primerCampoInvalido = input;
+                    continue;
                 }
             }
 
-            input.addEventListener('input', validar);
-            input.addEventListener('blur', validar);
-        }
-
-        bindValidacion(
-            '{{ form.email.id_for_label }}',
-            'email-feedback',
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-            '✓ Correo válido',
-            'Formato inválido (ej: usuario@dominio.com)',
-            { requerido: true }
-        );
-
-        bindValidacion(
-            '{{ form.telefono.id_for_label }}',
-            'telefono-feedback',
-            /^\d+$/,
-            '✓ Teléfono válido',
-            'Solo se admiten números'
-        );
-
-        bindValidacion(
-            '{{ form.documento.id_for_label }}',
-            'documento-feedback',
-            /^\d+$/,
-            '✓ Documento válido',
-            'Solo se admiten números'
-        );
+            if (hayError) {
+                e.preventDefault();
+                if (primerCampoInvalido) {
+                    primerCampoInvalido.focus();
+                    primerCampoInvalido.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
     })();
 </script>
 {% endblock %}

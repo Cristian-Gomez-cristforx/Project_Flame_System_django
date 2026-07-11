@@ -28,22 +28,21 @@
                 </div>
 
                 <div class="col-md-6" data-show-when-tipo="Mesa">
-                    <label class="form-label">Mesa</label>
-                    {{ form.mesa }}
-                    <div class="text-muted-sm">Solo se muestran mesas libres.</div>
-                    {{ form.mesa.errors }}
+                    {% include 'pedidos/_mesa_field.html' with mesas_libres=mesas_libres form=form %}
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Nombre del cliente</label>
+                    <label class="form-label" for="{{ form.nombre_cliente.id_for_label }}">Nombre del cliente</label>
                     {{ form.nombre_cliente }}
-                    {{ form.nombre_cliente.errors }}
+                    <div class="text-danger small mt-1" data-error-for="{{ form.nombre_cliente.id_for_label }}"></div>
+                    {% if form.nombre_cliente.errors %}<div class="text-danger small mt-1">{{ form.nombre_cliente.errors|join:', ' }}</div>{% endif %}
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Teléfono</label>
+                    <label class="form-label" for="{{ form.telefono_cliente.id_for_label }}">Teléfono</label>
                     {{ form.telefono_cliente }}
-                    {{ form.telefono_cliente.errors }}
+                    <div class="text-danger small mt-1" data-error-for="{{ form.telefono_cliente.id_for_label }}"></div>
+                    {% if form.telefono_cliente.errors %}<div class="text-danger small mt-1">{{ form.telefono_cliente.errors|join:', ' }}</div>{% endif %}
                 </div>
 
                 <div class="col-12" data-show-when-tipo="Domicilio">
@@ -80,6 +79,78 @@
             tipoField.addEventListener('change', refresh);
             refresh();
         }
+    })();
+
+    (function () {
+        const form = document.getElementById('form-pedido');
+        if (!form) return;
+
+        const LETRAS = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/;
+        const DIGITOS = /^\d+$/;
+
+        const reglas = [
+            {
+                id: '{{ form.nombre_cliente.id_for_label }}',
+                pattern: LETRAS,
+                patternMsg: 'El nombre solo puede contener letras.',
+            },
+            {
+                id: '{{ form.telefono_cliente.id_for_label }}',
+                pattern: DIGITOS,
+                patternMsg: 'El teléfono solo admite números.',
+                min: 10,
+                max: 10,
+                lengthMsg: 'El teléfono debe tener exactamente 10 dígitos.',
+            },
+        ];
+
+        function limpiarErrores() {
+            form.querySelectorAll('[data-error-for]').forEach(el => { el.textContent = ''; });
+        }
+
+        function mostrarError(id, msg) {
+            const el = form.querySelector('[data-error-for="' + id + '"]');
+            if (el) el.textContent = msg;
+        }
+
+        form.addEventListener('submit', function (e) {
+            limpiarErrores();
+            let hayError = false;
+            let primero = null;
+
+            for (const regla of reglas) {
+                const input = document.getElementById(regla.id);
+                if (!input) continue;
+                const valor = input.value.trim();
+                if (!valor) continue;
+
+                if (regla.pattern && !regla.pattern.test(valor)) {
+                    mostrarError(regla.id, regla.patternMsg);
+                    hayError = true;
+                    if (!primero) primero = input;
+                    continue;
+                }
+                if (regla.min && valor.length < regla.min) {
+                    mostrarError(regla.id, regla.lengthMsg);
+                    hayError = true;
+                    if (!primero) primero = input;
+                    continue;
+                }
+                if (regla.max && valor.length > regla.max) {
+                    mostrarError(regla.id, regla.lengthMsg);
+                    hayError = true;
+                    if (!primero) primero = input;
+                }
+            }
+
+            if (hayError) {
+                e.preventDefault();
+                if (primero) {
+                    primero.focus();
+                    primero.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
     })();
 </script>
 {% endblock %}

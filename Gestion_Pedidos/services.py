@@ -68,6 +68,54 @@ def agregar_bebida(pedido, bebida, cantidad):
     return pedido.bebidas.create(bebida=bebida, cantidad=cantidad, precio_unitario=0, subtotal=0)
 
 
+def _validar_stock_suficiente(pedido):
+    faltantes = []
+    for detalle_producto in pedido.productos.select_related('producto').prefetch_related('insumos__insumo').all():
+        for detalle_insumo in detalle_producto.insumos.all():
+            if not detalle_insumo.usar:
+                continue
+            requerido = detalle_insumo.cantidad_requerida * detalle_producto.cantidad
+            disponible = detalle_insumo.insumo.cantidad_insumo
+            if requerido > disponible:
+                faltantes.append(
+                    f'{detalle_insumo.insumo.nombre_insumo}: se requieren {requerido}, hay {disponible}'
+                )
+    for detalle_bebida in pedido.bebidas.select_related('bebida').all():
+        disponible = detalle_bebida.bebida.cantidad_bebida
+        if detalle_bebida.cantidad > disponible:
+            faltantes.append(
+                f'{detalle_bebida.bebida.nombre_bebida}: se requieren {detalle_bebida.cantidad}, hay {disponible}'
+            )
+    if faltantes:
+        raise ValidationError(
+            'Stock insuficiente para enviar a cocina: ' + '; '.join(faltantes)
+        )
+
+
+def _descontar_bebidas(pedido):
+    for detalle_bebida in pedido.bebidas.select_related('bebida').all():
+        bebida = detalle_bebida.bebida
+        bebida.cantidad_bebida -= detalle_bebida.cantidad
+        bebida.save(update_fields=['cantidad_bebida'])
+
+
+def _restaurar_inventario(pedido):
+    for detalle_producto in pedido.productos.prefetch_related('insumos__insumo').all():
+        for detalle_insumo in detalle_producto.insumos.all():
+            if not detalle_insumo.usar:
+                continue
+            insumo = detalle_insumo.insumo
+            insumo.cantidad_insumo += detalle_insumo.cantidad_requerida * detalle_producto.cantidad
+            insumo.save(update_fields=['cantidad_insumo'])
+
+
+def _restaurar_bebidas(pedido):
+    for detalle_bebida in pedido.bebidas.select_related('bebida').all():
+        bebida = detalle_bebida.bebida
+        bebida.cantidad_bebida += detalle_bebida.cantidad
+        bebida.save(update_fields=['cantidad_bebida'])
+
+
 @transaction.atomic
 def cambiar_estado(pedido, nuevo_estado):
     if nuevo_estado not in TRANSICIONES_VALIDAS.get(pedido.estado, set()):
@@ -78,6 +126,8 @@ def cambiar_estado(pedido, nuevo_estado):
     if nuevo_estado == Pedido.EstadoPedido.COCINA:
         if not pedido.productos.exists() and not pedido.bebidas.exists():
             raise ValidationError('El pedido no tiene productos ni bebidas.')
+        if not pedido.inventario_descontado:
+            _validar_stock_suficiente(pedido)
 
     if nuevo_estado == Pedido.EstadoPedido.PAGADO and not pedido.tipo_pago:
         raise ValidationError('Registra un tipo de pago antes de marcar como pagado.')
@@ -86,8 +136,9 @@ def cambiar_estado(pedido, nuevo_estado):
     pedido.full_clean()
     pedido.save()
 
-    if nuevo_estado == Pedido.EstadoPedido.PAGADO and not pedido.inventario_descontado:
+    if nuevo_estado == Pedido.EstadoPedido.COCINA and not pedido.inventario_descontado:
         pedido.descontar_inventario()
+        _descontar_bebidas(pedido)
         pedido.inventario_descontado = True
         pedido.save(update_fields=['inventario_descontado'])
 
@@ -95,9 +146,15 @@ def cambiar_estado(pedido, nuevo_estado):
         pedido.mesa.ocupada = False
         pedido.mesa.save(update_fields=['ocupada'])
 
-    if nuevo_estado == Pedido.EstadoPedido.CANCELADO and pedido.mesa:
-        pedido.mesa.ocupada = False
-        pedido.mesa.save(update_fields=['ocupada'])
+    if nuevo_estado == Pedido.EstadoPedido.CANCELADO:
+        if pedido.mesa:
+            pedido.mesa.ocupada = False
+            pedido.mesa.save(update_fields=['ocupada'])
+        if pedido.inventario_descontado:
+            _restaurar_inventario(pedido)
+            _restaurar_bebidas(pedido)
+            pedido.inventario_descontado = False
+            pedido.save(update_fields=['inventario_descontado'])
 
 
 @transaction.atomic

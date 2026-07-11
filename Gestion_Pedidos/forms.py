@@ -1,6 +1,13 @@
 from django import forms
+from django.core.validators import MaxLengthValidator, MinLengthValidator
 
-from Inventario.models import Bebida, Producto
+from Inventario.models import Bebida, Producto, RecetaProducto
+from login_modify_django.forms import (
+    NUMERIC_ATTRS,
+    TELEFONO_LEN,
+    solo_letras,
+    solo_numeros,
+)
 
 from .models import (
     DetallePedidoBebida,
@@ -19,15 +26,38 @@ BOOTSTRAP_CHECK = {'class': 'form-check-input'}
 class MesaForm(forms.ModelForm):
     class Meta:
         model = Mesa
-        fields = ['numero_mesa', 'activa', 'ocupada']
+        fields = ['numero_mesa', 'activa']
         widgets = {
             'numero_mesa': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
             'activa': forms.CheckboxInput(attrs=BOOTSTRAP_CHECK),
-            'ocupada': forms.CheckboxInput(attrs=BOOTSTRAP_CHECK),
         }
+
+    def clean_numero_mesa(self):
+        numero = self.cleaned_data.get('numero_mesa')
+        if numero is None:
+            return numero
+        if numero < 1:
+            raise forms.ValidationError('El número de mesa debe ser mayor a 0.')
+        qs = Mesa.objects.filter(numero_mesa=numero)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(f'Ya existe la mesa {numero}.')
+        return numero
 
 
 class PedidoCrearForm(forms.ModelForm):
+    nueva_mesa = forms.IntegerField(
+        required=False,
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            **BOOTSTRAP_INPUT,
+            'placeholder': 'Número de la nueva mesa',
+            'autocomplete': 'off',
+        }),
+        label='Nueva mesa',
+    )
+
     class Meta:
         model = Pedido
         fields = [
@@ -41,7 +71,7 @@ class PedidoCrearForm(forms.ModelForm):
             'tipo': forms.Select(attrs=BOOTSTRAP_SELECT),
             'mesa': forms.Select(attrs=BOOTSTRAP_SELECT),
             'nombre_cliente': forms.TextInput(attrs=BOOTSTRAP_INPUT),
-            'telefono_cliente': forms.TextInput(attrs=BOOTSTRAP_INPUT),
+            'telefono_cliente': forms.TextInput(attrs={**NUMERIC_ATTRS, 'maxlength': str(TELEFONO_LEN)}),
             'direccion_pedi': forms.TextInput(attrs=BOOTSTRAP_INPUT),
         }
 
@@ -52,17 +82,41 @@ class PedidoCrearForm(forms.ModelForm):
         self.fields['nombre_cliente'].required = False
         self.fields['telefono_cliente'].required = False
         self.fields['direccion_pedi'].required = False
+        self.fields['nombre_cliente'].validators.append(solo_letras)
+        self.fields['telefono_cliente'].validators.extend([
+            solo_numeros,
+            MinLengthValidator(TELEFONO_LEN, f'El teléfono debe tener exactamente {TELEFONO_LEN} dígitos.'),
+            MaxLengthValidator(TELEFONO_LEN, f'El teléfono debe tener exactamente {TELEFONO_LEN} dígitos.'),
+        ])
+
+    def clean_nueva_mesa(self):
+        numero = self.cleaned_data.get('nueva_mesa')
+        if numero in (None, ''):
+            return None
+        if Mesa.objects.filter(numero_mesa=numero).exists():
+            raise forms.ValidationError(
+                f'La mesa {numero} ya existe. Selecciónala en el listado.'
+            )
+        return numero
 
     def clean(self):
         cleaned = super().clean()
         tipo = cleaned.get('tipo')
         mesa = cleaned.get('mesa')
+        nueva_mesa = cleaned.get('nueva_mesa')
         direccion = (cleaned.get('direccion_pedi') or '').strip()
         nombre = (cleaned.get('nombre_cliente') or '').strip()
         telefono = (cleaned.get('telefono_cliente') or '').strip()
 
-        if tipo == Pedido.TipoPedido.MESA and not mesa:
-            self.add_error('mesa', 'Debe seleccionar una mesa libre.')
+        if tipo == Pedido.TipoPedido.MESA:
+            if not mesa and not nueva_mesa:
+                self.add_error('mesa', 'Debe seleccionar una mesa libre o crear una nueva.')
+            elif mesa and nueva_mesa:
+                self.add_error('nueva_mesa', 'Selecciona una mesa existente o crea una nueva, no ambas.')
+            elif mesa and mesa.ocupada:
+                self.add_error('mesa', f'La mesa {mesa.numero_mesa} está ocupada.')
+            elif mesa and not mesa.activa:
+                self.add_error('mesa', f'La mesa {mesa.numero_mesa} está inactiva.')
 
         if tipo == Pedido.TipoPedido.DOMICILIO:
             if not direccion:
@@ -73,7 +127,7 @@ class PedidoCrearForm(forms.ModelForm):
         if tipo == Pedido.TipoPedido.RECOGIDA and not nombre:
             self.add_error('nombre_cliente', 'El nombre del cliente es obligatorio para recoger.')
 
-        if tipo == Pedido.TipoPedido.RECOGIDA and mesa:
+        if tipo == Pedido.TipoPedido.RECOGIDA and (mesa or nueva_mesa):
             self.add_error('mesa', 'Los pedidos para recoger no usan mesa.')
 
         return cleaned
@@ -93,7 +147,45 @@ class AgregarProductoForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['producto'].queryset = Producto.objects.filter(activo=True).order_by('nombre_producto')
+        productos = (
+            Producto.objects.filter(activo=True)
+            .select_related('receta')
+            .prefetch_related('receta__detalles__insumo')
+            .order_by('nombre_producto')
+        )
+
+        stock_por_producto = {}
+        for prod in productos:
+            try:
+                receta = prod.receta
+            except RecetaProducto.DoesNotExist:
+                stock_por_producto[prod.pk] = 0
+                continue
+            stock_por_producto[prod.pk] = receta.cuantas_unidades_posibles()
+
+        self.fields['producto'].queryset = productos
+        self.fields['producto'].label_from_instance = (
+            lambda obj: f'{obj.nombre_producto} | Stock: {stock_por_producto.get(obj.pk, 0)} | ${obj.precio_producto:,.0f}'.replace(',', '.')
+        )
+        self._stock_por_producto = stock_por_producto
+
+    def clean(self):
+        cleaned = super().clean()
+        producto = cleaned.get('producto')
+        cantidad = cleaned.get('cantidad')
+        if producto and cantidad:
+            disponible = self._stock_por_producto.get(producto.pk, 0)
+            if disponible <= 0:
+                self.add_error(
+                    'producto',
+                    f'El producto "{producto.nombre_producto}" no tiene unidades.',
+                )
+            elif cantidad > disponible:
+                self.add_error(
+                    'cantidad',
+                    f'No hay suficientes unidades de "{producto.nombre_producto}".',
+                )
+        return cleaned
 
 
 class AgregarBebidaForm(forms.Form):
@@ -110,7 +202,30 @@ class AgregarBebidaForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['bebida'].queryset = Bebida.objects.filter(cantidad_bebida__gt=0).order_by('nombre_bebida')
+        bebidas = Bebida.objects.order_by('nombre_bebida')
+        self.fields['bebida'].queryset = bebidas
+        self.fields['bebida'].label_from_instance = (
+            lambda obj: f'{obj.nombre_bebida} ({obj.tamaño_bebida}) | Stock: {obj.cantidad_bebida} | ${obj.precio_venta:,.0f}'.replace(',', '.')
+        )
+        self._stock_por_bebida = {b.pk: b.cantidad_bebida for b in bebidas}
+
+    def clean(self):
+        cleaned = super().clean()
+        bebida = cleaned.get('bebida')
+        cantidad = cleaned.get('cantidad')
+        if bebida and cantidad:
+            disponible = self._stock_por_bebida.get(bebida.pk, 0)
+            if disponible <= 0:
+                self.add_error(
+                    'bebida',
+                    f'La bebida "{bebida.nombre_bebida}" no tiene unidades.',
+                )
+            elif cantidad > disponible:
+                self.add_error(
+                    'cantidad',
+                    f'No hay suficientes unidades de "{bebida.nombre_bebida}".',
+                )
+        return cleaned
 
 
 class PagoForm(forms.ModelForm):

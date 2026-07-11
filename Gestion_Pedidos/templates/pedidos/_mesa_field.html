@@ -1,0 +1,107 @@
+{% comment %}
+Campo de mesa con botón "+" al lado del select para crear una nueva.
+
+Parámetros:
+    mesas_libres  -- queryset de Mesa (activa=True, ocupada=False)
+    form          -- el PedidoCrearForm (para leer errores y el valor del select)
+{% endcomment %}
+<label class="form-label" for="{{ form.mesa.id_for_label }}">Mesa</label>
+<div class="mesa-field">
+    <div class="input-group">
+        <select name="mesa"
+                id="{{ form.mesa.id_for_label }}"
+                class="form-select mesa-select">
+            <option value="">-- Seleccionar mesa libre --</option>
+            {% for mesa in mesas_libres %}
+                <option value="{{ mesa.pk }}"
+                    {% if form.mesa.value and form.mesa.value|stringformat:"s" == mesa.pk|stringformat:"s" %}selected{% endif %}>
+                    Mesa {{ mesa.numero_mesa }}
+                </option>
+            {% endfor %}
+        </select>
+        <button type="button"
+                class="btn btn-outline-success toggle-nueva-mesa"
+                title="Crear nueva mesa">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+    <div class="text-muted-sm mt-1">Solo se muestran mesas libres.</div>
+    {% if form.mesa.errors %}
+        <div class="text-danger small mt-1">{{ form.mesa.errors|join:', ' }}</div>
+    {% endif %}
+
+    <div class="nueva-mesa-wrapper mt-2 {% if not form.nueva_mesa.value %}d-none{% endif %}">
+        <div class="input-group">
+            <span class="input-group-text bg-white">
+                <i class="fas fa-chair text-success"></i>
+            </span>
+            <input type="number"
+                   name="nueva_mesa"
+                   id="{{ form.nueva_mesa.id_for_label }}"
+                   class="form-control nueva-mesa-input"
+                   min="1"
+                   step="1"
+                   placeholder="Número de la nueva mesa"
+                   value="{{ form.nueva_mesa.value|default_if_none:'' }}"
+                   autocomplete="off">
+            <button type="button" class="btn btn-outline-secondary cancel-nueva-mesa" title="Cancelar">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <small class="text-muted">Se creará al guardar el pedido.</small>
+        {% if form.nueva_mesa.errors %}
+            <div class="text-danger small mt-1">{{ form.nueva_mesa.errors|join:', ' }}</div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+(function () {
+    if (window.__mesaFieldInit) return;
+    window.__mesaFieldInit = true;
+
+    function initMesaField(wrapper) {
+        const select = wrapper.querySelector('.mesa-select');
+        const toggleBtn = wrapper.querySelector('.toggle-nueva-mesa');
+        const nuevaWrapper = wrapper.querySelector('.nueva-mesa-wrapper');
+        const input = wrapper.querySelector('.nueva-mesa-input');
+        const cancelBtn = wrapper.querySelector('.cancel-nueva-mesa');
+        if (!select || !toggleBtn || !nuevaWrapper || !input) return;
+
+        function showNueva() {
+            nuevaWrapper.classList.remove('d-none');
+            select.value = '';
+            select.disabled = true;
+            toggleBtn.classList.add('active');
+            setTimeout(() => input.focus(), 0);
+        }
+        function hideNueva() {
+            nuevaWrapper.classList.add('d-none');
+            select.disabled = false;
+            input.value = '';
+            toggleBtn.classList.remove('active');
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            if (nuevaWrapper.classList.contains('d-none')) showNueva();
+            else hideNueva();
+        });
+        cancelBtn?.addEventListener('click', hideNueva);
+
+        // Si el select está disabled, no se envía; para que llegue vacío al backend,
+        // habilitarlo justo antes de submit.
+        const form = select.closest('form');
+        form?.addEventListener('submit', () => {
+            if (select.disabled) select.disabled = false;
+        });
+
+        // Estado inicial: si venía con nueva_mesa (errores server), mantener abierto.
+        if (!nuevaWrapper.classList.contains('d-none')) {
+            select.disabled = true;
+            toggleBtn.classList.add('active');
+        }
+    }
+
+    document.querySelectorAll('.mesa-field').forEach(initMesaField);
+})();
+</script>
