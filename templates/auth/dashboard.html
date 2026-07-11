@@ -103,23 +103,15 @@
 {# ====================== ADMIN ====================== #}
 {% if es_admin %}
     <div class="row g-3 mb-3">
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-4">
             <div class="kpi-card success">
                 <i class="fas fa-sack-dollar kpi-icon"></i>
                 <div class="kpi-label">Ventas hoy</div>
                 <p class="kpi-value">${{ kpis.ventas_hoy|floatformat:0|intcomma }}</p>
-                <div class="kpi-sub">{{ kpis.pedidos_hoy }} pedidos</div>
+                <div class="kpi-sub">{{ kpis.pedidos_hoy }} pedidos finalizados</div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <i class="fas fa-receipt kpi-icon"></i>
-                <div class="kpi-label">Ticket promedio</div>
-                <p class="kpi-value">${{ kpis.ticket_promedio|floatformat:0|intcomma }}</p>
-                <div class="kpi-sub">por pedido</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-4">
             <div class="kpi-card accent">
                 <i class="fas fa-chair kpi-icon"></i>
                 <div class="kpi-label">Mesas ocupadas</div>
@@ -127,7 +119,7 @@
                 <div class="kpi-sub">activas ahora</div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-4">
             <div class="kpi-card {% if kpis.stock_bajo_count %}danger{% else %}success{% endif %}">
                 <i class="fas fa-triangle-exclamation kpi-icon"></i>
                 <div class="kpi-label">Stock bajo</div>
@@ -192,7 +184,7 @@
                                     <strong>{{ insumo.nombre_insumo }}</strong>
                                     <div class="small text-muted">{{ insumo.categoria.nombre_categoria|default:"Sin categoría" }}</div>
                                 </div>
-                                <span class="badge bg-danger">{{ insumo.stock_actual|floatformat:1 }} {{ insumo.unidad_medida|default:"" }}</span>
+                                <span class="badge bg-danger">{{ insumo.porcentaje_del_maximo }}% · {{ insumo.cantidad_insumo }} {{ insumo.get_unidad_medida_display }}</span>
                             </li>
                         {% endfor %}
                     </ul>

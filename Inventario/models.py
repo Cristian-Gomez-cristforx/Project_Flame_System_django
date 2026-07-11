@@ -171,10 +171,10 @@ class Insumo(models.Model):
         # Actualizar precio por gramo
         if self.cantidad_insumo > 0:
             self.precio_gramo = (
-                self.precio_insumo / self.cantidad_insumo
-            )
+                Decimal(self.precio_insumo) / Decimal(self.cantidad_insumo)
+            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         else:
-            self.precio_gramo = 0
+            self.precio_gramo = Decimal("0.00")
             
         
 

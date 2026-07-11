@@ -1,5 +1,6 @@
 {% comment %}
-Campo de categoría con botón "+" al lado del select para crear una nueva.
+Campo de categoría con botón "+" al lado del select para crear una nueva,
+y botón "editar" para renombrar la categoría seleccionada vía modal (AJAX).
 
 Parámetros:
     categorias           -- queryset de Categoria filtrado por tipo
@@ -17,11 +18,18 @@ Parámetros:
             <option value="">-- Seleccionar categoría --</option>
             {% for cat in categorias %}
                 <option value="{{ cat.id }}"
+                    data-editar-url="{% url 'inventario:editar_categoria' cat.id %}"
+                    data-nombre="{{ cat.nombre_categoria }}"
                     {% if current_categoria_id and current_categoria_id|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
                     {{ cat.nombre_categoria }}
                 </option>
             {% endfor %}
         </select>
+        <button type="button"
+                class="btn btn-outline-warning editar-categoria-btn d-none"
+                title="Editar categoría seleccionada">
+            <i class="fas fa-edit"></i>
+        </button>
         <button type="button"
                 class="btn btn-outline-success toggle-nueva-categoria"
                 title="Crear nueva categoría">
@@ -54,14 +62,50 @@ Parámetros:
     </div>
 </div>
 
+<div class="modal fade" id="editarCategoriaModal" tabindex="-1" aria-labelledby="editarCategoriaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editarCategoriaModalLabel">
+                    <i class="fas fa-edit text-warning me-2"></i>Editar categoría
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label" for="editar-categoria-nombre-inline">Nuevo nombre <span class="text-danger">*</span></label>
+                <input type="text" id="editar-categoria-nombre-inline"
+                       class="form-control" maxlength="80"
+                       pattern="[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+"
+                       autocomplete="off">
+                <div class="form-text small">Solo letras y espacios. Debe ser único.</div>
+                <div class="text-danger small mt-1 d-none" id="editar-categoria-error-inline"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="editar-categoria-guardar-inline">
+                    <i class="fas fa-save me-1"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 (function () {
     if (window.__categoriaFieldInit) return;
     window.__categoriaFieldInit = true;
 
+    const soloLetras = /^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+$/;
+
+    function getCsrf() {
+        const el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        return el ? el.value : '';
+    }
+
     function initCategoriaField(wrapper) {
         const select = wrapper.querySelector('.categoria-select');
         const toggleBtn = wrapper.querySelector('.toggle-nueva-categoria');
+        const editarBtn = wrapper.querySelector('.editar-categoria-btn');
         const nuevaWrapper = wrapper.querySelector('.nueva-categoria-wrapper');
         const input = wrapper.querySelector('.nueva-categoria-input');
         const cancelBtn = wrapper.querySelector('.cancel-nueva-categoria');
@@ -73,6 +117,7 @@ Parámetros:
             select.disabled = true;
             input.required = true;
             toggleBtn.classList.add('active');
+            actualizarEditarBtn();
             setTimeout(() => input.focus(), 0);
         }
         function hideNueva() {
@@ -81,6 +126,13 @@ Parámetros:
             input.required = false;
             input.value = '';
             toggleBtn.classList.remove('active');
+            actualizarEditarBtn();
+        }
+        function actualizarEditarBtn() {
+            if (!editarBtn) return;
+            const opt = select.options[select.selectedIndex];
+            const tieneSel = !select.disabled && opt && opt.value && opt.dataset.editarUrl;
+            editarBtn.classList.toggle('d-none', !tieneSel);
         }
 
         toggleBtn.addEventListener('click', () => {
@@ -88,14 +140,90 @@ Parámetros:
             else hideNueva();
         });
         cancelBtn?.addEventListener('click', hideNueva);
+        select.addEventListener('change', actualizarEditarBtn);
+        actualizarEditarBtn();
 
-        // Si el select está disabled, no se envía; para que llegue vacío al backend,
-        // habilitarlo justo antes de submit.
+        editarBtn?.addEventListener('click', () => abrirModalEditar(select));
+
         const form = select.closest('form');
         form?.addEventListener('submit', () => {
             if (select.disabled) select.disabled = false;
         });
     }
+
+    const modalEl = document.getElementById('editarCategoriaModal');
+    const nombreInput = document.getElementById('editar-categoria-nombre-inline');
+    const errorEl = document.getElementById('editar-categoria-error-inline');
+    const guardarBtn = document.getElementById('editar-categoria-guardar-inline');
+    let selectActivo = null;
+    let optActiva = null;
+
+    function mostrarError(msg) {
+        errorEl.textContent = msg;
+        errorEl.classList.remove('d-none');
+        nombreInput.focus();
+    }
+    function limpiarError() {
+        errorEl.classList.add('d-none');
+        errorEl.textContent = '';
+    }
+
+    function abrirModalEditar(select) {
+        const opt = select.options[select.selectedIndex];
+        if (!opt || !opt.dataset.editarUrl) return;
+        selectActivo = select;
+        optActiva = opt;
+        nombreInput.value = opt.dataset.nombre || opt.textContent.trim();
+        limpiarError();
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        setTimeout(() => { nombreInput.focus(); nombreInput.select(); }, 150);
+    }
+
+    async function guardar() {
+        if (!selectActivo || !optActiva) return;
+        const raw = nombreInput.value.replace(/\s+/g, ' ').trim();
+        if (!raw) { mostrarError('El nombre no puede estar vacío.'); return; }
+        if (!soloLetras.test(raw)) { mostrarError('El nombre solo permite letras y espacios.'); return; }
+
+        const normalizado = raw.toLowerCase();
+        for (const o of selectActivo.options) {
+            if (o !== optActiva && (o.dataset.nombre || '').trim().toLowerCase() === normalizado) {
+                mostrarError(`La categoría "${raw}" ya existe.`);
+                return;
+            }
+        }
+
+        guardarBtn.disabled = true;
+        try {
+            const fd = new FormData();
+            fd.append('nombre_categoria', raw);
+            fd.append('csrfmiddlewaretoken', getCsrf());
+            const resp = await fetch(optActiva.dataset.editarUrl, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: fd,
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) {
+                mostrarError(data.error || 'No se pudo actualizar la categoría.');
+                return;
+            }
+            document.querySelectorAll(`option[data-editar-url="${optActiva.dataset.editarUrl}"]`).forEach(o => {
+                o.textContent = data.nombre;
+                o.dataset.nombre = data.nombre;
+            });
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        } catch (err) {
+            mostrarError('Error de red al actualizar.');
+        } finally {
+            guardarBtn.disabled = false;
+        }
+    }
+
+    guardarBtn?.addEventListener('click', guardar);
+    nombreInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); guardar(); }
+    });
 
     document.querySelectorAll('.categoria-field').forEach(initCategoriaField);
 })();

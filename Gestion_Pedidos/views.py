@@ -81,20 +81,26 @@ def crear_pedido(request):
     return render(request, 'pedidos/crear.html', {
         'form': form,
         'tipos': Pedido.TipoPedido.choices,
-        'mesas_libres': Mesa.objects.filter(activa=True, ocupada=False).order_by('numero_mesa'),
+        'mesas_disponibles': Mesa.objects.filter(activa=True).order_by('numero_mesa'),
     })
 
 
-def _render_detalle(request, pedido, *, form_producto=None, form_bebida=None, error_accion=None):
+def _render_detalle(request, pedido, *, form_producto=None, form_bebida=None, error_accion=None, error_items=None):
     totales = services.calcular_totales(pedido)
     return render(request, 'pedidos/detalle.html', {
         'pedido': pedido,
         'totales': totales,
-        'form_producto': form_producto or AgregarProductoForm(),
-        'form_bebida': form_bebida or AgregarBebidaForm(),
+        'form_producto': form_producto or AgregarProductoForm(pedido=pedido),
+        'form_bebida': form_bebida or AgregarBebidaForm(pedido=pedido),
         'form_pago': PagoForm(instance=pedido),
         'estados': Pedido.EstadoPedido,
         'error_accion': error_accion,
+        'error_items': error_items,
+        'mesas_disponibles': Mesa.objects.filter(activa=True).order_by('numero_mesa'),
+        'puede_cambiar_mesa': (
+            pedido.tipo == Pedido.TipoPedido.MESA
+            and pedido.estado in {Pedido.EstadoPedido.PENDIENTE, Pedido.EstadoPedido.COCINA, Pedido.EstadoPedido.COCINADO}
+        ),
     })
 
 
@@ -115,7 +121,7 @@ def detalle_pedido(request, pedido_id):
 @require_POST
 def agregar_producto(request, pedido_id):
     pedido = _get_pedido_detalle(pedido_id)
-    form = AgregarProductoForm(request.POST)
+    form = AgregarProductoForm(request.POST, pedido=pedido)
     if form.is_valid():
         try:
             services.agregar_producto(
@@ -134,7 +140,7 @@ def agregar_producto(request, pedido_id):
 @require_POST
 def agregar_bebida(request, pedido_id):
     pedido = _get_pedido_detalle(pedido_id)
-    form = AgregarBebidaForm(request.POST)
+    form = AgregarBebidaForm(request.POST, pedido=pedido)
     if form.is_valid():
         try:
             services.agregar_bebida(
@@ -172,12 +178,72 @@ def cambiar_estado(request, pedido_id):
         messages.success(request, f'Pedido → {pedido.get_estado_display()}.')
         return redirect(next_url or reverse('pedidos:detalle', args=[pedido_id]))
     except ValidationError as e:
-        error = '; '.join(e.messages)
+        mensajes = list(e.messages)
+        if len(mensajes) > 1:
+            titulo, items = mensajes[0], mensajes[1:]
+        else:
+            titulo, items = (mensajes[0] if mensajes else ''), None
         if next_url:
-            messages.error(request, error)
+            messages.error(request, ' '.join(mensajes))
             return redirect(next_url)
         pedido = _get_pedido_detalle(pedido_id)
-        return _render_detalle(request, pedido, error_accion=error)
+        return _render_detalle(request, pedido, error_accion=titulo, error_items=items)
+
+
+@rol_requerido(*ROLES_PEDIDOS)
+@require_POST
+def cambiar_mesa(request, pedido_id):
+    pedido = get_object_or_404(Pedido, pk=pedido_id)
+
+    if pedido.tipo != Pedido.TipoPedido.MESA:
+        messages.error(request, 'Este pedido no es de tipo mesa.')
+        return redirect('pedidos:detalle', pedido_id=pedido_id)
+
+    if pedido.estado in {Pedido.EstadoPedido.FINALIZADO, Pedido.EstadoPedido.CANCELADO, Pedido.EstadoPedido.PAGADO}:
+        messages.error(request, 'No se puede cambiar la mesa en el estado actual del pedido.')
+        return redirect('pedidos:detalle', pedido_id=pedido_id)
+
+    nueva_pk = request.POST.get('mesa')
+    nueva_num = (request.POST.get('nueva_mesa') or '').strip()
+
+    if nueva_num:
+        try:
+            numero = int(nueva_num)
+        except (TypeError, ValueError):
+            messages.error(request, 'Número de mesa inválido.')
+            return redirect('pedidos:detalle', pedido_id=pedido_id)
+        if numero < 1:
+            messages.error(request, 'El número de mesa debe ser mayor a 0.')
+            return redirect('pedidos:detalle', pedido_id=pedido_id)
+        if Mesa.objects.filter(numero_mesa=numero).exists():
+            messages.error(request, f'La mesa {numero} ya existe. Selecciónala en el listado.')
+            return redirect('pedidos:detalle', pedido_id=pedido_id)
+        nueva = Mesa.objects.create(numero_mesa=numero, activa=True, ocupada=False)
+    else:
+        nueva = get_object_or_404(Mesa, pk=nueva_pk)
+
+    if not nueva.activa:
+        messages.error(request, f'La mesa {nueva.numero_mesa} está inactiva.')
+        return redirect('pedidos:detalle', pedido_id=pedido_id)
+    if nueva.ocupada and nueva.pk != (pedido.mesa_id or 0):
+        messages.error(request, f'La mesa {nueva.numero_mesa} está ocupada.')
+        return redirect('pedidos:detalle', pedido_id=pedido_id)
+
+    mesa_anterior = pedido.mesa
+    if mesa_anterior and mesa_anterior.pk == nueva.pk:
+        return redirect('pedidos:detalle', pedido_id=pedido_id)
+
+    if mesa_anterior:
+        mesa_anterior.ocupada = False
+        mesa_anterior.save(update_fields=['ocupada'])
+
+    nueva.ocupada = True
+    nueva.save(update_fields=['ocupada'])
+    pedido.mesa = nueva
+    pedido.save(update_fields=['mesa'])
+
+    messages.success(request, f'Mesa cambiada a {nueva.numero_mesa}.')
+    return redirect('pedidos:detalle', pedido_id=pedido_id)
 
 
 @rol_requerido(*ROLES_PEDIDOS)
@@ -250,11 +316,16 @@ def mesa_crear(request):
 @admin_requerido
 def mesa_editar(request, mesa_id):
     mesa = get_object_or_404(Mesa, pk=mesa_id)
-    form = MesaForm(request.POST or None, instance=mesa)
-    if request.method == 'POST' and form.is_valid():
-        form.save()
-        messages.success(request, f'Mesa {mesa.numero_mesa} actualizada.')
+    if request.method == 'POST':
+        form = MesaForm(request.POST, instance=mesa)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Mesa {mesa.numero_mesa} actualizada.')
+        else:
+            errores = '; '.join(f'{k}: {", ".join(v)}' for k, v in form.errors.items())
+            messages.error(request, f'No se pudo actualizar la mesa. {errores}')
         return redirect('pedidos:mesas')
+    form = MesaForm(instance=mesa)
     return render(request, 'pedidos/mesa_form.html', {
         'form': form,
         'modo': 'editar',

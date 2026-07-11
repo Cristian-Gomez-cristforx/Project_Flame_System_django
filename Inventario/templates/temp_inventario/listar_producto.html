@@ -61,8 +61,7 @@
                     <tbody>
                         {% for item in productos_info %}
                         <tr class="producto-row" style="cursor:pointer;"
-                            data-bs-toggle="collapse"
-                            data-bs-target="#receta-{{ item.producto.id_producto }}"
+                            data-collapse-target="receta-{{ item.producto.id_producto }}"
                             aria-expanded="false"
                             aria-controls="receta-{{ item.producto.id_producto }}">
                             <td>
@@ -96,7 +95,7 @@
                                     <span class="badge bg-secondary">Sin receta</span>
                                 {% endif %}
                             </td>
-                            <td class="text-center" onclick="event.stopPropagation();">
+                            <td class="text-center actions-cell">
                                 <a href="{% url 'inventario:editar_producto' item.producto.id_producto %}" class="btn btn-sm btn-warning">
                                     <i class="fas fa-edit"></i> Editar
                                 </a>
@@ -171,5 +170,31 @@
     .producto-row .chevron-icon { transition: transform 0.15s ease; }
     .producto-row[aria-expanded="true"] .chevron-icon { transform: rotate(90deg); }
     .receta-collapse-row td { background: transparent; }
+    .actions-cell { cursor: default; }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        document.querySelectorAll('.producto-row').forEach(function (row) {
+            const targetId = row.dataset.collapseTarget;
+            const collapseEl = document.getElementById(targetId);
+            if (!collapseEl) return;
+
+            const inst = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
+            collapseEl.addEventListener('shown.bs.collapse', function () {
+                row.setAttribute('aria-expanded', 'true');
+            });
+            collapseEl.addEventListener('hidden.bs.collapse', function () {
+                row.setAttribute('aria-expanded', 'false');
+            });
+
+            row.addEventListener('click', function (e) {
+                if (e.target.closest('.actions-cell')) return;
+                inst.toggle();
+            });
+        });
+    })();
+</script>
 {% endblock %}

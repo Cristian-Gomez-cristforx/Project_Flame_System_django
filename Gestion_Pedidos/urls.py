@@ -18,5 +18,6 @@ urlpatterns = [
     path('<int:pedido_id>/agregar-bebida/', views.agregar_bebida, name='agregar_bebida'),
     path('<int:pedido_id>/eliminar/<str:tipo_item>/<int:item_id>/', views.eliminar_item, name='eliminar_item'),
     path('<int:pedido_id>/cambiar-estado/', views.cambiar_estado, name='cambiar_estado'),
+    path('<int:pedido_id>/cambiar-mesa/', views.cambiar_mesa, name='cambiar_mesa'),
     path('<int:pedido_id>/cobrar/', views.cobrar_pedido, name='cobrar'),
 ]

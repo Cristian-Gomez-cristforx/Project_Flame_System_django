@@ -63,9 +63,12 @@
                             </small>
                         </td>
                         <td class="text-center">
-                            <a href="{% url 'inventario:editar_categoria' cat.pk %}" class="btn btn-sm btn-warning">
+                            <button type="button" class="btn btn-sm btn-warning open-editar-categoria"
+                                    data-cat-url="{% url 'inventario:editar_categoria' cat.pk %}"
+                                    data-cat-nombre="{{ cat.nombre_categoria }}"
+                                    title="Editar categoría">
                                 <i class="fas fa-edit"></i>
-                            </a>
+                            </button>
                             <form method="POST" action="{% url 'inventario:eliminar_categoria' cat.pk %}" class="d-inline"
                                   onsubmit="return confirm('¿Eliminar categoría {{ cat.nombre_categoria }}?');">
                                 {% csrf_token %}
@@ -87,4 +90,96 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="editarCategoriaModal" tabindex="-1" aria-labelledby="editarCategoriaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" id="editar-categoria-form" novalidate>
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editarCategoriaModalLabel">
+                        <i class="fas fa-edit text-warning me-2"></i>Editar categoría
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label" for="editar-categoria-nombre">Nuevo nombre <span class="text-danger">*</span></label>
+                    <input type="text" name="nombre_categoria" id="editar-categoria-nombre"
+                           class="form-control" maxlength="80" required
+                           pattern="[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+"
+                           title="Solo letras y espacios">
+                    <div class="form-text small">Solo letras y espacios. Debe ser único.</div>
+                    <div class="text-danger small mt-1 d-none" id="editar-categoria-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const modalEl = document.getElementById('editarCategoriaModal');
+    if (!modalEl) return;
+
+    const form = document.getElementById('editar-categoria-form');
+    const input = document.getElementById('editar-categoria-nombre');
+    const errorEl = document.getElementById('editar-categoria-error');
+    const soloLetras = /^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+$/;
+
+    const nombresExistentes = new Map();
+    document.querySelectorAll('.open-editar-categoria').forEach(btn => {
+        const nombre = (btn.dataset.catNombre || '').trim().toLowerCase();
+        nombresExistentes.set(btn.dataset.catUrl, nombre);
+    });
+
+    let urlActual = '';
+
+    document.querySelectorAll('.open-editar-categoria').forEach(btn => {
+        btn.addEventListener('click', () => {
+            urlActual = btn.dataset.catUrl;
+            form.action = urlActual;
+            input.value = btn.dataset.catNombre;
+            errorEl.classList.add('d-none');
+            errorEl.textContent = '';
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            setTimeout(() => { input.focus(); input.select(); }, 150);
+        });
+    });
+
+    form.addEventListener('submit', (e) => {
+        const raw = input.value.replace(/\s+/g, ' ').trim();
+        if (!raw) {
+            e.preventDefault();
+            mostrarError('El nombre no puede estar vacío.');
+            return;
+        }
+        if (!soloLetras.test(raw)) {
+            e.preventDefault();
+            mostrarError('El nombre solo permite letras y espacios.');
+            return;
+        }
+        const normalizado = raw.toLowerCase();
+        for (const [url, nombre] of nombresExistentes.entries()) {
+            if (url !== urlActual && nombre === normalizado) {
+                e.preventDefault();
+                mostrarError(`La categoría "${raw}" ya existe.`);
+                return;
+            }
+        }
+        input.value = raw;
+    });
+
+    function mostrarError(msg) {
+        errorEl.textContent = msg;
+        errorEl.classList.remove('d-none');
+        input.focus();
+    }
+})();
+</script>
 {% endblock %}

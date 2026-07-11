@@ -80,10 +80,15 @@
             <div class="mesa-wrapper">
                 {% if es_admin %}
                     <div class="mesa-actions">
-                        <a href="{% url 'pedidos:mesa_editar' item.mesa.pk %}"
-                           class="btn btn-warning" title="Editar mesa">
+                        <button type="button"
+                                class="btn btn-warning open-editar-mesa"
+                                title="Editar mesa"
+                                data-mesa-pk="{{ item.mesa.pk }}"
+                                data-mesa-numero="{{ item.mesa.numero_mesa }}"
+                                data-mesa-activa="{{ item.mesa.activa|yesno:'1,0' }}"
+                                data-mesa-url="{% url 'pedidos:mesa_editar' item.mesa.pk %}">
                             <i class="fas fa-edit"></i>
-                        </a>
+                        </button>
                         <form method="POST" action="{% url 'pedidos:mesa_eliminar' item.mesa.pk %}"
                               onsubmit="return confirm('¿Eliminar Mesa {{ item.mesa.numero_mesa }}?');">
                             {% csrf_token %}
@@ -126,4 +131,64 @@
         </div>
     {% endfor %}
 </div>
+
+{% if es_admin %}
+<div class="modal fade" id="editarMesaModal" tabindex="-1" aria-labelledby="editarMesaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" id="editar-mesa-form">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editarMesaModalLabel">
+                        <i class="fas fa-edit text-warning me-2"></i>Editar Mesa <span id="editar-mesa-numero-label"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="editar-mesa-numero">Número de la mesa <span class="text-danger">*</span></label>
+                        <input type="number" name="numero_mesa" id="editar-mesa-numero" class="form-control" min="1" step="1" required>
+                        <div class="form-text small">Debe ser único y mayor a 0.</div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="activa" id="editar-mesa-activa" class="form-check-input">
+                        <label class="form-check-label" for="editar-mesa-activa">Mesa activa</label>
+                        <div class="form-text small">Las mesas inactivas no aparecen al crear pedidos.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if es_admin %}
+<script>
+(function () {
+    const modalEl = document.getElementById('editarMesaModal');
+    if (!modalEl) return;
+
+    const form = document.getElementById('editar-mesa-form');
+    const numeroInput = document.getElementById('editar-mesa-numero');
+    const activaInput = document.getElementById('editar-mesa-activa');
+    const numeroLabel = document.getElementById('editar-mesa-numero-label');
+
+    document.querySelectorAll('.open-editar-mesa').forEach(btn => {
+        btn.addEventListener('click', () => {
+            form.action = btn.dataset.mesaUrl;
+            numeroInput.value = btn.dataset.mesaNumero;
+            activaInput.checked = btn.dataset.mesaActiva === '1';
+            numeroLabel.textContent = btn.dataset.mesaNumero;
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        });
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

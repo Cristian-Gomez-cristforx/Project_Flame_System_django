@@ -75,22 +75,20 @@
                                     <div class="text-danger small">{{ detalle_form.insumo.errors|join:', ' }}</div>
                                 {% endif %}
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-5">
                                 <label class="form-label">Cantidad requerida</label>
                                 {{ detalle_form.cantidad_requerida }}
                                 {% if detalle_form.cantidad_requerida.errors %}
                                     <div class="text-danger small">{{ detalle_form.cantidad_requerida.errors|join:', ' }}</div>
                                 {% endif %}
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-1 d-flex">
                                 {% if detalle_form.instance.pk %}
-                                    <div class="form-check">
-                                        {{ detalle_form.DELETE }}
-                                        <label class="form-check-label text-danger" for="{{ detalle_form.DELETE.id_for_label }}">
-                                            Eliminar
-                                        </label>
-                                    </div>
+                                    <div style="display:none;">{{ detalle_form.DELETE }}</div>
                                 {% endif %}
+                                <button type="button" class="btn btn-outline-danger btn-sm remove-detalle w-100" title="Quitar insumo">
+                                    <i class="fas fa-times"></i>
+                                </button>
                             </div>
                         </div>
                     {% endfor %}
@@ -120,11 +118,18 @@
     const addBtn = document.getElementById('add-detalle');
     const totalForms = document.querySelector('input[name="detalles-TOTAL_FORMS"]');
 
-    addBtn?.addEventListener('click', function () {
-        const rows = container.querySelectorAll('.detalle-row');
-        if (rows.length === 0) return;
+    const initialRow = container.querySelector('.detalle-row');
+    const rowTemplate = initialRow ? initialRow.cloneNode(true) : null;
+    if (rowTemplate) {
+        rowTemplate.querySelectorAll('.text-danger').forEach(el => el.remove());
+        rowTemplate.querySelectorAll('input[name$="-id"]').forEach(el => { el.value = ''; });
+        rowTemplate.querySelectorAll('input[name$="-DELETE"]').forEach(el => { el.checked = false; });
+    }
 
-        const template = rows[0].cloneNode(true);
+    addBtn?.addEventListener('click', function () {
+        if (!rowTemplate) return;
+
+        const template = rowTemplate.cloneNode(true);
         const newIndex = parseInt(totalForms.value, 10);
 
         template.querySelectorAll('input, select, textarea').forEach(el => {
@@ -132,13 +137,62 @@
             if (el.id) el.id = el.id.replace(/id_detalles-\d+-/, `id_detalles-${newIndex}-`);
             if (el.type !== 'checkbox' && el.type !== 'hidden') el.value = '';
             if (el.type === 'checkbox') el.checked = false;
+            delete el.dataset.bound;
         });
 
-        template.querySelectorAll('.form-check').forEach(el => el.remove());
-        template.querySelectorAll('.text-danger').forEach(el => el.remove());
+        template.style.display = '';
         container.appendChild(template);
         totalForms.value = newIndex + 1;
         bindRowListeners();
+        refreshInsumoOptions();
+        validateAll();
+    });
+
+    function refreshInsumoOptions() {
+        const rows = container.querySelectorAll('.detalle-row');
+        const usados = new Set();
+        rows.forEach(row => {
+            if (row.style.display === 'none') return;
+            const del = row.querySelector('input[name$="-DELETE"]');
+            if (del && del.checked) return;
+            const sel = row.querySelector('select[name$="-insumo"]');
+            if (sel && sel.value) usados.add(sel.value);
+        });
+        rows.forEach(row => {
+            const sel = row.querySelector('select[name$="-insumo"]');
+            if (!sel) return;
+            const actual = sel.value;
+            [...sel.options].forEach(opt => {
+                if (!opt.value) return;
+                const enUso = usados.has(opt.value) && opt.value !== actual;
+                opt.hidden = enUso;
+                opt.disabled = enUso;
+            });
+        });
+    }
+
+    container.addEventListener('click', function (e) {
+        const btn = e.target.closest('.remove-detalle');
+        if (!btn) return;
+        const row = btn.closest('.detalle-row');
+        if (!row) return;
+        const idInput = row.querySelector('input[name$="-id"]');
+        const del = row.querySelector('input[name$="-DELETE"]');
+        if (idInput && idInput.value && del) {
+            del.checked = true;
+            row.style.display = 'none';
+        } else {
+            row.remove();
+            const rows = container.querySelectorAll('.detalle-row');
+            rows.forEach((r, i) => {
+                r.querySelectorAll('input, select, textarea').forEach(el => {
+                    if (el.name) el.name = el.name.replace(/detalles-\d+-/, `detalles-${i}-`);
+                    if (el.id) el.id = el.id.replace(/id_detalles-\d+-/, `id_detalles-${i}-`);
+                });
+            });
+            totalForms.value = rows.length;
+        }
+        refreshInsumoOptions();
         validateAll();
     });
 
@@ -198,6 +252,9 @@
             el.dataset.bound = '1';
             el.addEventListener('input', validateAll);
             el.addEventListener('change', validateAll);
+            if (el.matches('select[name$="-insumo"]')) {
+                el.addEventListener('change', refreshInsumoOptions);
+            }
         });
     }
 
@@ -216,6 +273,7 @@
     });
 
     bindRowListeners();
+    refreshInsumoOptions();
 })();
 </script>
 {% endblock %}

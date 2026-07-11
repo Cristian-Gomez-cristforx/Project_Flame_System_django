@@ -8,16 +8,81 @@
     <div>
         <h1 class="mb-1">Pedido {{ pedido.numero_factura }}</h1>
         <div class="text-muted-sm">
-            {{ pedido.get_tipo_display }}
-            {% if pedido.mesa %} · Mesa {{ pedido.mesa.numero_mesa }}{% endif %}
-            {% if pedido.nombre_cliente %} · {{ pedido.nombre_cliente }}{% endif %}
-            · Mesero: {{ pedido.mesero.get_username }}
-            · <span class="badge-estado badge-{{ pedido.estado|lower|slice:':7' }}">{{ pedido.get_estado_display }}</span>
+            <span class="badge-estado badge-{{ pedido.estado|lower|slice:':7' }}">{{ pedido.get_estado_display }}</span>
+            · {{ pedido.get_tipo_display }}
         </div>
     </div>
     <a href="{% url 'pedidos:lista' %}" class="btn btn-outline-secondary">
         <i class="fas fa-arrow-left me-1"></i> Volver
     </a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-circle-info me-1"></i> Información del pedido</span>
+        {% if puede_cambiar_mesa %}
+            <button type="button" class="btn btn-sm btn-outline-primary"
+                    data-bs-toggle="modal" data-bs-target="#cambiarMesaModal">
+                <i class="fas fa-chair me-1"></i> Cambiar mesa
+            </button>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-sm-6 col-md-4">
+                <div class="text-muted-sm">Factura</div>
+                <div class="fw-semibold">{{ pedido.numero_factura }}</div>
+            </div>
+            <div class="col-sm-6 col-md-4">
+                <div class="text-muted-sm">Tipo</div>
+                <div class="fw-semibold">{{ pedido.get_tipo_display }}</div>
+            </div>
+            <div class="col-sm-6 col-md-4">
+                <div class="text-muted-sm">Estado</div>
+                <div><span class="badge-estado badge-{{ pedido.estado|lower|slice:':7' }}">{{ pedido.get_estado_display }}</span></div>
+            </div>
+            {% if pedido.tipo == 'Mesa' %}
+                <div class="col-sm-6 col-md-4">
+                    <div class="text-muted-sm">Mesa</div>
+                    <div class="fw-semibold">
+                        {% if pedido.mesa %}Mesa {{ pedido.mesa.numero_mesa }}{% else %}<span class="text-muted">Sin mesa</span>{% endif %}
+                    </div>
+                </div>
+            {% endif %}
+            <div class="col-sm-6 col-md-4">
+                <div class="text-muted-sm">Cliente</div>
+                <div class="fw-semibold">{{ pedido.nombre_cliente|default:"—" }}</div>
+            </div>
+            <div class="col-sm-6 col-md-4">
+                <div class="text-muted-sm">Teléfono</div>
+                <div class="fw-semibold">{{ pedido.telefono_cliente|default:"—" }}</div>
+            </div>
+            {% if pedido.direccion_pedi %}
+                <div class="col-sm-6 col-md-4">
+                    <div class="text-muted-sm">Dirección</div>
+                    <div class="fw-semibold">{{ pedido.direccion_pedi }}</div>
+                </div>
+            {% endif %}
+            <div class="col-sm-6 col-md-4">
+                <div class="text-muted-sm">Mesero</div>
+                <div class="fw-semibold">{{ pedido.mesero.get_username }}</div>
+            </div>
+            <div class="col-sm-6 col-md-4">
+                <div class="text-muted-sm">Fecha creación</div>
+                <div class="fw-semibold">{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</div>
+            </div>
+            <div class="col-sm-6 col-md-4">
+                <div class="text-muted-sm">Última actualización</div>
+                <div class="fw-semibold">{{ pedido.fecha_actualizacion|date:"d/m/Y H:i" }}</div>
+            </div>
+            {% if pedido.tipo_pago %}
+                <div class="col-sm-6 col-md-4">
+                    <div class="text-muted-sm">Tipo de pago</div>
+                    <div class="fw-semibold">{{ pedido.get_tipo_pago_display }}</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 <div class="row g-4">
@@ -76,6 +141,9 @@
                         <div class="col-md-7">
                             <label class="form-label mb-1">Producto</label>
                             {{ form_producto.producto }}
+                            <div class="text-danger small mt-1 d-none" data-duplicado-msg="producto">
+                                Este producto ya está en el pedido. Añade más unidades editando su fila o elimínalo primero.
+                            </div>
                             {% if form_producto.producto.errors %}
                                 <div class="text-danger small mt-1">{{ form_producto.producto.errors|join:', ' }}</div>
                             {% endif %}
@@ -148,6 +216,9 @@
                         <div class="col-md-7">
                             <label class="form-label mb-1">Bebida</label>
                             {{ form_bebida.bebida }}
+                            <div class="text-danger small mt-1 d-none" data-duplicado-msg="bebida">
+                                Esta bebida ya está en el pedido. Añade más unidades editando su fila o elimínala primero.
+                            </div>
                             {% if form_bebida.bebida.errors %}
                                 <div class="text-danger small mt-1">{{ form_bebida.bebida.errors|join:', ' }}</div>
                             {% endif %}
@@ -200,7 +271,14 @@
             <div class="card-header">Acciones</div>
             <div class="card-body d-grid gap-2">
                 {% if error_accion %}
-                    <div class="alert alert-danger py-2 mb-0">{{ error_accion }}</div>
+                    <div class="alert alert-danger py-2 mb-0">
+                        {{ error_accion }}
+                        {% if error_items %}
+                            <ul class="mb-0 mt-2 ps-3">
+                                {% for item in error_items %}<li>{{ item }}</li>{% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
                 {% endif %}
                 {% if pedido.estado == estados.PENDIENTE %}
                     <form method="post" action="{% url 'pedidos:cambiar_estado' pedido.id_pedido %}">
@@ -246,4 +324,229 @@
         </div>
     </div>
 </div>
+
+{% if puede_cambiar_mesa %}
+<div class="modal fade" id="cambiarMesaModal" tabindex="-1" aria-labelledby="cambiarMesaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cambiarMesaModalLabel"><i class="fas fa-chair me-2"></i>Cambiar mesa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-6 col-md-3">
+                        <button type="button" class="mesa-card mesa-nueva w-100" id="cambiar-mesa-open-nueva" title="Crear nueva mesa">
+                            <div class="mesa-numero"><i class="fas fa-plus"></i></div>
+                            <div class="mesa-estado">Nueva</div>
+                        </button>
+                    </div>
+                    {% for m in mesas_disponibles %}
+                        <div class="col-6 col-md-3">
+                            {% if m.ocupada and m.pk != pedido.mesa_id %}
+                                <div class="mesa-card mesa-ocupada mesa-disabled">
+                                    <div class="mesa-numero">{{ m.numero_mesa }}</div>
+                                    <div class="mesa-estado">Ocupada</div>
+                                </div>
+                            {% elif m.pk == pedido.mesa_id %}
+                                <div class="mesa-card mesa-actual mesa-disabled">
+                                    <div class="mesa-numero">{{ m.numero_mesa }}</div>
+                                    <div class="mesa-estado">Actual</div>
+                                </div>
+                            {% else %}
+                                <form method="post" action="{% url 'pedidos:cambiar_mesa' pedido.id_pedido %}" class="m-0">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="mesa" value="{{ m.pk }}">
+                                    <button type="submit" class="mesa-card mesa-libre w-100">
+                                        <div class="mesa-numero">{{ m.numero_mesa }}</div>
+                                        <div class="mesa-estado">Libre</div>
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #cambiarMesaModal .mesa-card {
+        border-radius: 12px;
+        border: 1px solid var(--flame-border);
+        background: #fff;
+        padding: 1.25rem;
+        text-align: center;
+        transition: transform 0.15s, box-shadow 0.15s;
+        display: block;
+        width: 100%;
+        font-family: inherit;
+    }
+    #cambiarMesaModal button.mesa-card { cursor: pointer; }
+    #cambiarMesaModal .mesa-card:hover:not(.mesa-disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    }
+    #cambiarMesaModal .mesa-libre { border-color: var(--flame-success); }
+    #cambiarMesaModal .mesa-ocupada { border-color: var(--flame-primary); background: #fff8f3; }
+    #cambiarMesaModal .mesa-actual { border-color: var(--flame-primary); background: #eaf4ff; }
+    #cambiarMesaModal .mesa-disabled { cursor: not-allowed; opacity: 0.75; }
+    #cambiarMesaModal .mesa-numero { font-size: 2.5rem; font-weight: 700; color: var(--flame-text); }
+    #cambiarMesaModal .mesa-estado {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+    }
+    #cambiarMesaModal .mesa-libre .mesa-estado { color: var(--flame-success); }
+    #cambiarMesaModal .mesa-ocupada .mesa-estado { color: var(--flame-primary); }
+    #cambiarMesaModal .mesa-actual .mesa-estado { color: var(--flame-primary); }
+    #cambiarMesaModal .mesa-nueva {
+        border-style: dashed;
+        border-color: var(--flame-border);
+        background: #f6f6f6;
+        color: var(--flame-text-muted, #6c757d);
+    }
+    #cambiarMesaModal .mesa-nueva .mesa-numero { color: var(--flame-text-muted, #6c757d); }
+    #cambiarMesaModal .mesa-nueva .mesa-estado { color: var(--flame-text-muted, #6c757d); }
+</style>
+
+<div class="modal fade" id="cambiarMesaNuevaModal" tabindex="-1" aria-labelledby="cambiarMesaNuevaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'pedidos:cambiar_mesa' pedido.id_pedido %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cambiarMesaNuevaModalLabel"><i class="fas fa-plus me-2"></i>Nueva mesa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label" for="cambiar-mesa-nueva-input">Número de la mesa</label>
+                    <input type="number" name="nueva_mesa" id="cambiar-mesa-nueva-input" class="form-control"
+                           min="1" step="1" placeholder="Ej: 12" autocomplete="off" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success"><i class="fas fa-check me-1"></i> Crear y usar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if puede_cambiar_mesa %}
+<script>
+    (function () {
+        const mesasModalEl = document.getElementById('cambiarMesaModal');
+        const nuevaModalEl = document.getElementById('cambiarMesaNuevaModal');
+        const openBtn = document.getElementById('cambiar-mesa-open-nueva');
+        const nuevaInput = document.getElementById('cambiar-mesa-nueva-input');
+        if (!mesasModalEl || !nuevaModalEl || !openBtn) return;
+
+        openBtn.addEventListener('click', () => {
+            const outer = bootstrap.Modal.getOrCreateInstance(mesasModalEl);
+            const inner = bootstrap.Modal.getOrCreateInstance(nuevaModalEl);
+            mesasModalEl.addEventListener('hidden.bs.modal', function once() {
+                mesasModalEl.removeEventListener('hidden.bs.modal', once);
+                inner.show();
+                setTimeout(() => nuevaInput?.focus(), 100);
+            });
+            outer.hide();
+        });
+    })();
+</script>
+{% endif %}
+<script>
+    (function () {
+        const pedidoId = '{{ pedido.id_pedido }}';
+        const prefijo = 'pedido_' + pedidoId + '_';
+
+        const productoForm = document.querySelector('form[action*="agregar-producto"]');
+        const bebidaForm = document.querySelector('form[action*="agregar-bebida"]');
+        const productoSelect = productoForm ? productoForm.querySelector('select[name="producto"]') : null;
+        const productoCant = productoForm ? productoForm.querySelector('input[name="cantidad"]') : null;
+        const bebidaSelect = bebidaForm ? bebidaForm.querySelector('select[name="bebida"]') : null;
+        const bebidaCant = bebidaForm ? bebidaForm.querySelector('input[name="cantidad"]') : null;
+
+        const productosEnPedido = new Set([{% for d in pedido.productos.all %}{{ d.producto_id }}{% if not forloop.last %},{% endif %}{% endfor %}]);
+        const bebidasEnPedido = new Set([{% for d in pedido.bebidas.all %}{{ d.bebida_id }}{% if not forloop.last %},{% endif %}{% endfor %}]);
+        const productoMsg = document.querySelector('[data-duplicado-msg="producto"]');
+        const bebidaMsg = document.querySelector('[data-duplicado-msg="bebida"]');
+
+        function chequearDuplicado(select, msg, enPedido) {
+            if (!select || !msg) return;
+            const val = parseInt(select.value, 10);
+            if (val && enPedido.has(val)) {
+                msg.classList.remove('d-none');
+            } else {
+                msg.classList.add('d-none');
+            }
+        }
+
+        function persistirValor(el, key) {
+            if (!el) return;
+            if (el.value) sessionStorage.setItem(key, el.value);
+            else sessionStorage.removeItem(key);
+        }
+
+        function restaurarSelect(select, key) {
+            if (!select) return;
+            const stored = sessionStorage.getItem(key);
+            if (stored && [...select.options].some(o => o.value === stored)) {
+                select.value = stored;
+            }
+        }
+
+        function restaurarInput(input, key) {
+            if (!input) return;
+            const stored = sessionStorage.getItem(key);
+            if (stored) input.value = stored;
+        }
+
+        function bindSelect(select, key, msg, enPedido) {
+            if (!select) return;
+            restaurarSelect(select, key);
+            select.addEventListener('change', function () {
+                persistirValor(select, key);
+                chequearDuplicado(select, msg, enPedido);
+            });
+            chequearDuplicado(select, msg, enPedido);
+        }
+
+        function bindInput(input, key) {
+            if (!input) return;
+            restaurarInput(input, key);
+            input.addEventListener('input', function () {
+                persistirValor(input, key);
+            });
+        }
+
+        function limpiarAlEnviar(form, keys) {
+            if (!form) return;
+            form.addEventListener('submit', function () {
+                keys.forEach(k => sessionStorage.removeItem(k));
+            });
+        }
+
+        const kProdSel = prefijo + 'producto_sel';
+        const kProdCant = prefijo + 'producto_cant';
+        const kBebSel = prefijo + 'bebida_sel';
+        const kBebCant = prefijo + 'bebida_cant';
+
+        bindSelect(productoSelect, kProdSel, productoMsg, productosEnPedido);
+        bindInput(productoCant, kProdCant);
+        bindSelect(bebidaSelect, kBebSel, bebidaMsg, bebidasEnPedido);
+        bindInput(bebidaCant, kBebCant);
+
+        limpiarAlEnviar(productoForm, [kProdSel, kProdCant]);
+        limpiarAlEnviar(bebidaForm, [kBebSel, kBebCant]);
+    })();
+</script>
 {% endblock %}

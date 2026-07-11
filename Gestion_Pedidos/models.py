@@ -89,29 +89,6 @@ class Pedido(models.Model):
            self.numero_factura = (f"FAC-{self.fecha_creacion.year}-{self.id_pedido:06d}")
            super().save(update_fields=['numero_factura'])
 
-    def descontar_inventario(self):
-
-        pedido = Pedido.objects.prefetch_related(
-            'productos__insumos__insumo'
-        ).get(pk=self.pk)
-
-        for detalle_producto in pedido.productos.all():
-
-            for detalle_insumo in detalle_producto.insumos.all():
-
-                if detalle_insumo.usar:
-
-                    insumo = detalle_insumo.insumo
-
-                    cantidad_descontar = (
-                        detalle_insumo.cantidad_requerida *
-                        detalle_producto.cantidad
-                    )
-
-                    insumo.cantidad_insumo -= cantidad_descontar
-
-                    insumo.save()   
-        
     def __str__(self):
        return f"{self.numero_factura} - {self.estado}"
 

@@ -1,8 +1,11 @@
+from decimal import Decimal
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model, logout as django_logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
-from django.db.models import Q
+from django.db.models import DecimalField, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -66,15 +69,26 @@ def dashboard(request):
     alertas_stock = []
 
     if es_admin:
-        resumen = reportes_services.resumen_ventas(hoy, hoy)
+        from Gestion_Pedidos.models import DetallePedidoBebida, DetallePedidoProducto
+
         estado_inv = reportes_services.estado_inventario()
         mesas_total = Mesa.objects.filter(activa=True).count()
         mesas_ocupadas = Mesa.objects.filter(activa=True, ocupada=True).count()
 
+        finalizados_hoy = Pedido.objects.filter(
+            estado=Pedido.EstadoPedido.FINALIZADO,
+            fecha_actualizacion__date=hoy,
+        )
+        total_productos = DetallePedidoProducto.objects.filter(
+            pedido__in=finalizados_hoy
+        ).aggregate(total=Coalesce(Sum('subtotal'), Value(Decimal('0')), output_field=DecimalField()))['total']
+        total_bebidas = DetallePedidoBebida.objects.filter(
+            pedido__in=finalizados_hoy
+        ).aggregate(total=Coalesce(Sum('subtotal'), Value(Decimal('0')), output_field=DecimalField()))['total']
+
         kpis = {
-            'ventas_hoy': resumen['total_ingresos'],
-            'pedidos_hoy': resumen['total_pedidos'],
-            'ticket_promedio': resumen['ticket_promedio'],
+            'ventas_hoy': total_productos + total_bebidas,
+            'pedidos_hoy': finalizados_hoy.count(),
             'mesas_ocupadas': mesas_ocupadas,
             'mesas_total': mesas_total,
             'stock_bajo_count': len(estado_inv['stock_bajo']),

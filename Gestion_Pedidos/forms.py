@@ -145,7 +145,7 @@ class AgregarProductoForm(forms.Form):
         widget=forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, pedido=None, **kwargs):
         super().__init__(*args, **kwargs)
         productos = (
             Producto.objects.filter(activo=True)
@@ -154,6 +154,11 @@ class AgregarProductoForm(forms.Form):
             .order_by('nombre_producto')
         )
 
+        ya_en_pedido = {}
+        if pedido is not None:
+            for d in pedido.productos.all():
+                ya_en_pedido[d.producto_id] = ya_en_pedido.get(d.producto_id, 0) + d.cantidad
+
         stock_por_producto = {}
         for prod in productos:
             try:
@@ -161,18 +166,26 @@ class AgregarProductoForm(forms.Form):
             except RecetaProducto.DoesNotExist:
                 stock_por_producto[prod.pk] = 0
                 continue
-            stock_por_producto[prod.pk] = receta.cuantas_unidades_posibles()
+            stock_real = receta.cuantas_unidades_posibles()
+            stock_por_producto[prod.pk] = max(0, stock_real - ya_en_pedido.get(prod.pk, 0))
 
         self.fields['producto'].queryset = productos
         self.fields['producto'].label_from_instance = (
             lambda obj: f'{obj.nombre_producto} | Stock: {stock_por_producto.get(obj.pk, 0)} | ${obj.precio_producto:,.0f}'.replace(',', '.')
         )
         self._stock_por_producto = stock_por_producto
+        self._ya_en_pedido = ya_en_pedido
 
     def clean(self):
         cleaned = super().clean()
         producto = cleaned.get('producto')
         cantidad = cleaned.get('cantidad')
+        if producto and producto.pk in self._ya_en_pedido:
+            self.add_error(
+                'producto',
+                f'"{producto.nombre_producto}" ya está en el pedido. Añade más unidades editando su fila o elimínalo primero.',
+            )
+            return cleaned
         if producto and cantidad:
             disponible = self._stock_por_producto.get(producto.pk, 0)
             if disponible <= 0:
@@ -183,7 +196,7 @@ class AgregarProductoForm(forms.Form):
             elif cantidad > disponible:
                 self.add_error(
                     'cantidad',
-                    f'No hay suficientes unidades de "{producto.nombre_producto}".',
+                    f'No hay suficientes insumos para "{producto.nombre_producto}".',
                 )
         return cleaned
 
@@ -200,19 +213,37 @@ class AgregarBebidaForm(forms.Form):
         widget=forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, pedido=None, **kwargs):
         super().__init__(*args, **kwargs)
         bebidas = Bebida.objects.order_by('nombre_bebida')
+
+        ya_en_pedido = {}
+        if pedido is not None:
+            for d in pedido.bebidas.all():
+                ya_en_pedido[d.bebida_id] = ya_en_pedido.get(d.bebida_id, 0) + d.cantidad
+
+        stock_por_bebida = {
+            b.pk: max(0, b.cantidad_bebida - ya_en_pedido.get(b.pk, 0))
+            for b in bebidas
+        }
+
         self.fields['bebida'].queryset = bebidas
         self.fields['bebida'].label_from_instance = (
-            lambda obj: f'{obj.nombre_bebida} ({obj.tamaño_bebida}) | Stock: {obj.cantidad_bebida} | ${obj.precio_venta:,.0f}'.replace(',', '.')
+            lambda obj: f'{obj.nombre_bebida} ({obj.tamaño_bebida}) | Stock: {stock_por_bebida.get(obj.pk, 0)} | ${obj.precio_venta:,.0f}'.replace(',', '.')
         )
-        self._stock_por_bebida = {b.pk: b.cantidad_bebida for b in bebidas}
+        self._stock_por_bebida = stock_por_bebida
+        self._ya_en_pedido = ya_en_pedido
 
     def clean(self):
         cleaned = super().clean()
         bebida = cleaned.get('bebida')
         cantidad = cleaned.get('cantidad')
+        if bebida and bebida.pk in self._ya_en_pedido:
+            self.add_error(
+                'bebida',
+                f'"{bebida.nombre_bebida}" ya está en el pedido. Añade más unidades editando su fila o elimínalo primero.',
+            )
+            return cleaned
         if bebida and cantidad:
             disponible = self._stock_por_bebida.get(bebida.pk, 0)
             if disponible <= 0:

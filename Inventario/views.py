@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -395,19 +396,33 @@ def crear_categoria(request):
 
 
 @admin_requerido
+@require_POST
 def editar_categoria(request, id):
     categoria = get_object_or_404(Categoria, pk=id)
-    form = CategoriaForm(request.POST or None, instance=categoria)
+    nombre = ' '.join((request.POST.get('nombre_categoria') or '').split())
 
-    if request.method == 'POST' and form.is_valid():
-        form.save()
+    error = None
+    if not nombre:
+        error = 'El nombre de la categoría no puede estar vacío.'
+    elif not nombre.replace(' ', '').isalpha():
+        error = 'El nombre solo permite letras y espacios.'
+    elif Categoria.objects.filter(nombre_categoria__iexact=nombre).exclude(pk=id).exists():
+        error = f'La categoría "{nombre}" ya existe.'
+
+    if not error:
+        categoria.nombre_categoria = nombre
+        categoria.save()
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if error:
+            return JsonResponse({'ok': False, 'error': error}, status=400)
+        return JsonResponse({'ok': True, 'id': categoria.pk, 'nombre': categoria.nombre_categoria})
+
+    if error:
+        messages.error(request, error)
+    else:
         messages.success(request, 'Categoría actualizada.')
-        return redirect('inventario:listar_categorias')
-
-    return render(request, 'temp_inventario/editar_categoria.html', {
-        'form': form,
-        'categoria': categoria,
-    })
+    return redirect('inventario:listar_categorias')
 
 
 @admin_requerido

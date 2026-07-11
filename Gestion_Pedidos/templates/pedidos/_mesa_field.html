@@ -1,107 +1,219 @@
 {% comment %}
-Campo de mesa con botón "+" al lado del select para crear una nueva.
+Campo de mesa: botón "Ver mesas" que abre un modal con el diseño de la sección Mesas.
+La primera card es "+" (gris) para crear una nueva mesa vía un modal más pequeño.
 
 Parámetros:
-    mesas_libres  -- queryset de Mesa (activa=True, ocupada=False)
-    form          -- el PedidoCrearForm (para leer errores y el valor del select)
+    mesas_disponibles -- queryset de Mesa (activa=True), ordenado por numero_mesa
+    form              -- el PedidoCrearForm
 {% endcomment %}
-<label class="form-label" for="{{ form.mesa.id_for_label }}">Mesa</label>
+<label class="form-label">Mesa</label>
 <div class="mesa-field">
-    <div class="input-group">
-        <select name="mesa"
-                id="{{ form.mesa.id_for_label }}"
-                class="form-select mesa-select">
-            <option value="">-- Seleccionar mesa libre --</option>
-            {% for mesa in mesas_libres %}
-                <option value="{{ mesa.pk }}"
-                    {% if form.mesa.value and form.mesa.value|stringformat:"s" == mesa.pk|stringformat:"s" %}selected{% endif %}>
-                    Mesa {{ mesa.numero_mesa }}
-                </option>
-            {% endfor %}
-        </select>
-        <button type="button"
-                class="btn btn-outline-success toggle-nueva-mesa"
-                title="Crear nueva mesa">
-            <i class="fas fa-plus"></i>
+    <input type="hidden" name="mesa" id="{{ form.mesa.id_for_label }}"
+           value="{% if form.mesa.value %}{{ form.mesa.value }}{% endif %}">
+    <input type="hidden" name="nueva_mesa" id="{{ form.nueva_mesa.id_for_label }}"
+           value="{{ form.nueva_mesa.value|default_if_none:'' }}">
+
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-primary open-mesas-modal"
+                data-bs-toggle="modal" data-bs-target="#mesasModal">
+            <i class="fas fa-chair me-1"></i> Ver mesas
         </button>
+        <span class="mesa-selected-label text-muted-sm ms-1">Ninguna mesa seleccionada.</span>
     </div>
-    <div class="text-muted-sm mt-1">Solo se muestran mesas libres.</div>
+
     {% if form.mesa.errors %}
         <div class="text-danger small mt-1">{{ form.mesa.errors|join:', ' }}</div>
     {% endif %}
+    {% if form.nueva_mesa.errors %}
+        <div class="text-danger small mt-1">{{ form.nueva_mesa.errors|join:', ' }}</div>
+    {% endif %}
+</div>
 
-    <div class="nueva-mesa-wrapper mt-2 {% if not form.nueva_mesa.value %}d-none{% endif %}">
-        <div class="input-group">
-            <span class="input-group-text bg-white">
-                <i class="fas fa-chair text-success"></i>
-            </span>
-            <input type="number"
-                   name="nueva_mesa"
-                   id="{{ form.nueva_mesa.id_for_label }}"
-                   class="form-control nueva-mesa-input"
-                   min="1"
-                   step="1"
-                   placeholder="Número de la nueva mesa"
-                   value="{{ form.nueva_mesa.value|default_if_none:'' }}"
-                   autocomplete="off">
-            <button type="button" class="btn btn-outline-secondary cancel-nueva-mesa" title="Cancelar">
-                <i class="fas fa-times"></i>
-            </button>
+<div class="modal fade" id="mesasModal" tabindex="-1" aria-labelledby="mesasModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mesasModalLabel"><i class="fas fa-chair me-2"></i>Elegir mesa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-6 col-md-3">
+                        <button type="button" class="mesa-card mesa-nueva open-nueva-mesa w-100" title="Crear nueva mesa">
+                            <div class="mesa-numero"><i class="fas fa-plus"></i></div>
+                            <div class="mesa-estado">Nueva</div>
+                        </button>
+                    </div>
+                    {% for mesa in mesas_disponibles %}
+                        <div class="col-6 col-md-3">
+                            {% if mesa.ocupada %}
+                                <div class="mesa-card mesa-ocupada mesa-disabled">
+                                    <div class="mesa-numero">{{ mesa.numero_mesa }}</div>
+                                    <div class="mesa-estado">Ocupada</div>
+                                </div>
+                            {% else %}
+                                <button type="button"
+                                        class="mesa-card mesa-libre pick-mesa w-100"
+                                        data-pk="{{ mesa.pk }}"
+                                        data-num="{{ mesa.numero_mesa }}">
+                                    <div class="mesa-numero">{{ mesa.numero_mesa }}</div>
+                                    <div class="mesa-estado">Libre</div>
+                                </button>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
         </div>
-        <small class="text-muted">Se creará al guardar el pedido.</small>
-        {% if form.nueva_mesa.errors %}
-            <div class="text-danger small mt-1">{{ form.nueva_mesa.errors|join:', ' }}</div>
-        {% endif %}
     </div>
 </div>
+
+<div class="modal fade" id="nuevaMesaModal" tabindex="-1" aria-labelledby="nuevaMesaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="nuevaMesaModalLabel"><i class="fas fa-plus me-2"></i>Nueva mesa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label" for="nueva-mesa-numero-input">Número de la mesa</label>
+                <input type="number" id="nueva-mesa-numero-input" class="form-control"
+                       min="1" step="1" placeholder="Ej: 12" autocomplete="off">
+                <div class="text-danger small mt-1 d-none" id="nueva-mesa-error"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="confirmar-nueva-mesa">
+                    <i class="fas fa-check me-1"></i> Añadir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #mesasModal .mesa-card {
+        border-radius: 12px;
+        border: 1px solid var(--flame-border);
+        background: #fff;
+        padding: 1.25rem;
+        text-align: center;
+        transition: transform 0.15s, box-shadow 0.15s;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        width: 100%;
+        font-family: inherit;
+    }
+    #mesasModal button.mesa-card { cursor: pointer; }
+    #mesasModal .mesa-card:hover:not(.mesa-disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+        color: inherit;
+    }
+    #mesasModal .mesa-libre { border-color: var(--flame-success); }
+    #mesasModal .mesa-ocupada { border-color: var(--flame-primary); background: #fff8f3; }
+    #mesasModal .mesa-disabled { cursor: not-allowed; opacity: 0.75; }
+    #mesasModal .mesa-nueva {
+        border-style: dashed;
+        border-color: var(--flame-border);
+        background: #f6f6f6;
+        color: var(--flame-text-muted, #6c757d);
+    }
+    #mesasModal .mesa-numero { font-size: 2.5rem; font-weight: 700; color: var(--flame-text); }
+    #mesasModal .mesa-nueva .mesa-numero { color: var(--flame-text-muted, #6c757d); }
+    #mesasModal .mesa-estado {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+    }
+    #mesasModal .mesa-libre .mesa-estado { color: var(--flame-success); }
+    #mesasModal .mesa-ocupada .mesa-estado { color: var(--flame-primary); }
+    #mesasModal .mesa-nueva .mesa-estado { color: var(--flame-text-muted, #6c757d); }
+</style>
 
 <script>
 (function () {
     if (window.__mesaFieldInit) return;
     window.__mesaFieldInit = true;
 
-    function initMesaField(wrapper) {
-        const select = wrapper.querySelector('.mesa-select');
-        const toggleBtn = wrapper.querySelector('.toggle-nueva-mesa');
-        const nuevaWrapper = wrapper.querySelector('.nueva-mesa-wrapper');
-        const input = wrapper.querySelector('.nueva-mesa-input');
-        const cancelBtn = wrapper.querySelector('.cancel-nueva-mesa');
-        if (!select || !toggleBtn || !nuevaWrapper || !input) return;
+    const wrapper = document.querySelector('.mesa-field');
+    if (!wrapper) return;
 
-        function showNueva() {
-            nuevaWrapper.classList.remove('d-none');
-            select.value = '';
-            select.disabled = true;
-            toggleBtn.classList.add('active');
-            setTimeout(() => input.focus(), 0);
-        }
-        function hideNueva() {
-            nuevaWrapper.classList.add('d-none');
-            select.disabled = false;
-            input.value = '';
-            toggleBtn.classList.remove('active');
-        }
+    const hiddenMesa = wrapper.querySelector('input[name="mesa"]');
+    const hiddenNueva = wrapper.querySelector('input[name="nueva_mesa"]');
+    const label = wrapper.querySelector('.mesa-selected-label');
 
-        toggleBtn.addEventListener('click', () => {
-            if (nuevaWrapper.classList.contains('d-none')) showNueva();
-            else hideNueva();
-        });
-        cancelBtn?.addEventListener('click', hideNueva);
+    const mesasModalEl = document.getElementById('mesasModal');
+    const nuevaModalEl = document.getElementById('nuevaMesaModal');
+    const nuevaInput = document.getElementById('nueva-mesa-numero-input');
+    const nuevaError = document.getElementById('nueva-mesa-error');
+    const confirmarBtn = document.getElementById('confirmar-nueva-mesa');
 
-        // Si el select está disabled, no se envía; para que llegue vacío al backend,
-        // habilitarlo justo antes de submit.
-        const form = select.closest('form');
-        form?.addEventListener('submit', () => {
-            if (select.disabled) select.disabled = false;
-        });
-
-        // Estado inicial: si venía con nueva_mesa (errores server), mantener abierto.
-        if (!nuevaWrapper.classList.contains('d-none')) {
-            select.disabled = true;
-            toggleBtn.classList.add('active');
+    function actualizarLabel() {
+        if (hiddenMesa.value) {
+            const card = mesasModalEl?.querySelector(`.pick-mesa[data-pk="${hiddenMesa.value}"]`);
+            const num = card?.dataset.num || hiddenMesa.value;
+            label.textContent = `Mesa ${num} seleccionada.`;
+            label.classList.remove('text-muted-sm');
+            label.classList.add('text-success', 'fw-semibold');
+        } else if (hiddenNueva.value) {
+            label.textContent = `Nueva mesa ${hiddenNueva.value} (se creará al guardar).`;
+            label.classList.remove('text-muted-sm');
+            label.classList.add('text-success', 'fw-semibold');
+        } else {
+            label.textContent = 'Ninguna mesa seleccionada.';
+            label.classList.remove('text-success', 'fw-semibold');
+            label.classList.add('text-muted-sm');
         }
     }
 
-    document.querySelectorAll('.mesa-field').forEach(initMesaField);
+    document.querySelectorAll('.pick-mesa').forEach(btn => {
+        btn.addEventListener('click', () => {
+            hiddenMesa.value = btn.dataset.pk;
+            hiddenNueva.value = '';
+            actualizarLabel();
+            bootstrap.Modal.getOrCreateInstance(mesasModalEl).hide();
+        });
+    });
+
+    document.querySelectorAll('.open-nueva-mesa').forEach(btn => {
+        btn.addEventListener('click', () => {
+            bootstrap.Modal.getOrCreateInstance(mesasModalEl).hide();
+            nuevaError.classList.add('d-none');
+            nuevaError.textContent = '';
+            nuevaInput.value = hiddenNueva.value || '';
+            const inst = bootstrap.Modal.getOrCreateInstance(nuevaModalEl);
+            mesasModalEl.addEventListener('hidden.bs.modal', function once() {
+                mesasModalEl.removeEventListener('hidden.bs.modal', once);
+                inst.show();
+                setTimeout(() => nuevaInput.focus(), 100);
+            });
+        });
+    });
+
+    confirmarBtn?.addEventListener('click', () => {
+        const val = parseInt(nuevaInput.value, 10);
+        if (!Number.isInteger(val) || val < 1) {
+            nuevaError.textContent = 'Ingresa un número válido mayor a 0.';
+            nuevaError.classList.remove('d-none');
+            nuevaInput.focus();
+            return;
+        }
+        hiddenNueva.value = val;
+        hiddenMesa.value = '';
+        actualizarLabel();
+        bootstrap.Modal.getOrCreateInstance(nuevaModalEl).hide();
+    });
+
+    nuevaInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); confirmarBtn.click(); }
+    });
+
+    actualizarLabel();
 })();
 </script>
