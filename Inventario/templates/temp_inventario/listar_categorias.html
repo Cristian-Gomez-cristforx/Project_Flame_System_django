@@ -31,7 +31,14 @@
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
-                        <th>ID</th>
+                        <th>
+                            <a href="?{{ orden_url }}" class="text-reset text-decoration-none">
+                                ID
+                                {% if orden_actual == 'asc' %}<i class="fas fa-arrow-up small"></i>
+                                {% elif orden_actual == 'desc' %}<i class="fas fa-arrow-down small"></i>
+                                {% else %}<i class="fas fa-sort small text-muted"></i>{% endif %}
+                            </a>
+                        </th>
                         <th>Nombre</th>
                         <th>Tipo</th>
                         <th>Ítems asociados</th>

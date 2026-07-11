@@ -28,12 +28,6 @@ urlpatterns = [
     path('bebidas/crear/', views.crear_bebida, name='crear_bebida'),
     path('bebidas/editar/<int:id>/', views.editar_bebida, name='editar_bebida'),
 
-    # Recetas
-    path('recetas/', views.listar_recetas, name='listar_recetas'),
-    path('recetas/crear/', views.crear_receta, name='crear_receta'),
-    path('recetas/editar/<int:id>/', views.editar_receta, name='editar_receta'),
-    path('recetas/eliminar/<int:id>/', views.eliminar_receta, name='eliminar_receta'),
-
     # Categorías
     path('categorias/', views.listar_categorias, name='listar_categorias'),
     path('categorias/crear/', views.crear_categoria, name='crear_categoria'),

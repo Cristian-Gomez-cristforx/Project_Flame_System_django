@@ -94,7 +94,7 @@ class BebidaAdmin(admin.ModelAdmin):
     list_filter = ['tamaño_bebida', 'categoria']
     ordering = ['nombre_bebida']
     readonly_fields=[]
-    exclude = ['precio_unitario_compra','precio_unitario_venta','bajo_stock_30']
+    exclude = ['precio_unitario_compra','precio_unitario_venta']
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == 'categoria':

@@ -42,7 +42,14 @@
                     <thead class="table-dark">
                         <tr>
                             <th style="width:2rem;"></th>
-                            <th>ID</th>
+                            <th>
+                                <a href="?{{ orden_url }}" class="text-reset text-decoration-none">
+                                    ID
+                                    {% if orden_actual == 'asc' %}<i class="fas fa-arrow-up small"></i>
+                                    {% elif orden_actual == 'desc' %}<i class="fas fa-arrow-down small"></i>
+                                    {% else %}<i class="fas fa-sort small text-muted"></i>{% endif %}
+                                </a>
+                            </th>
                             <th>Nombre</th>
                             <th>Categoría</th>
                             <th>Precio Venta</th>
@@ -101,24 +108,18 @@
                                     <div class="p-3 bg-light border-top">
                                         {% if item.tiene_receta and item.detalles %}
                                             <div class="row mb-3">
-                                                <div class="col-md-4">
+                                                <div class="col-md-6">
                                                     <small class="text-muted d-block">Costo de preparación</small>
                                                     <strong>${{ item.costo_preparacion|floatformat:2 }}</strong>
                                                 </div>
-                                                <div class="col-md-4">
-                                                    <small class="text-muted d-block">Ganancia estimada</small>
-                                                    <strong class="{% if item.ganancia_estimada > 0 %}text-success{% else %}text-danger{% endif %}">
-                                                        ${{ item.ganancia_estimada|floatformat:2 }}
-                                                    </strong>
-                                                </div>
-                                                <div class="col-md-4">
+                                                <div class="col-md-6">
                                                     <small class="text-muted d-block">Receta</small>
                                                     <span class="badge {% if item.receta.activa %}bg-success{% else %}bg-secondary{% endif %}">
                                                         {% if item.receta.activa %}Activa{% else %}Inactiva{% endif %}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <h6 class="mb-2"><i class="fas fa-list"></i> Ingredientes</h6>
+                                            <h6 class="mb-2"><i class="fas fa-book"></i> Receta</h6>
                                             <table class="table table-sm table-bordered mb-0">
                                                 <thead>
                                                     <tr>

@@ -17,14 +17,34 @@
 </div>
 
 <div class="mb-3">
-    <form method="GET" class="d-flex gap-2">
-        <input type="text" name="q" class="form-control"
-               placeholder="Buscar por nombre o categoría..."
+    <form method="GET" class="d-flex flex-wrap gap-2 align-items-stretch">
+        <input type="text" name="q" class="form-control" style="flex:1 1 220px;"
+               placeholder="Buscar por nombre..."
                value="{{ request.GET.q }}">
+
+        <select name="unidad" class="form-select" style="flex:0 1 180px;">
+            <option value="">Todas las unidades</option>
+            {% for value, label in unidades %}
+                <option value="{{ value }}" {% if value == unidad_actual %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <select name="categoria" class="form-select" style="flex:0 1 220px;">
+            <option value="">Todas las categorías</option>
+            {% for cat in categorias %}
+                <option value="{{ cat.id }}"
+                    {% if categoria_actual and categoria_actual|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
+                    {{ cat.nombre_categoria }}
+                </option>
+            {% endfor %}
+        </select>
+
         <button type="submit" class="btn btn-outline-primary">
-            <i class="fas fa-search"></i> Buscar
+            <i class="fas fa-search"></i> Filtrar
         </button>
-        {% if request.GET.q %}
+        {% if request.GET.q or unidad_actual or categoria_actual %}
             <a href="{% url 'inventario:listar_insumos' %}" class="btn btn-secondary">Limpiar</a>
         {% endif %}
     </form>
@@ -56,11 +76,21 @@
                             <th style="width:2.5rem;">
                                 <input type="checkbox" id="check-all" class="form-check-input">
                             </th>
-                            <th>ID</th>
+                            <th>
+                                <a href="?{{ orden_url }}" class="text-reset text-decoration-none">
+                                    ID
+                                    {% if orden_actual == 'asc' %}<i class="fas fa-arrow-up small"></i>
+                                    {% elif orden_actual == 'desc' %}<i class="fas fa-arrow-down small"></i>
+                                    {% else %}<i class="fas fa-sort small text-muted"></i>{% endif %}
+                                </a>
+                            </th>
                             <th>Nombre</th>
                             <th>Categoría</th>
                             <th>Stock</th>
                             <th>Unidad</th>
+                            <th>Stock máx</th>
+                            <th>% Stock máx</th>
+                            <th>Estado</th>
                             <th>Precio</th>
                             <th class="text-center">Acciones</th>
                         </tr>
@@ -81,28 +111,40 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if insumo.stock_maximo > 0 %}
-                                    {% if insumo.bajo_stock_30 %}
-                                        <span class="stock-bajo">{{ insumo.cantidad_insumo }}</span>
-                                        <small class="d-block text-muted-sm">
-                                            <i class="fas fa-exclamation-triangle"></i>
-                                            {{ insumo.porcentaje_del_maximo }}% del máx.
-                                        </small>
-                                    {% else %}
-                                        <span class="stock-ok">{{ insumo.cantidad_insumo }}</span>
-                                        <small class="d-block text-muted-sm">{{ insumo.porcentaje_del_maximo }}% del máx.</small>
-                                    {% endif %}
+                                {% if insumo.stock_maximo > 0 and insumo.bajo_stock_30 %}
+                                    <span class="stock-bajo fw-bold">{{ insumo.cantidad_insumo }}</span>
+                                {% elif insumo.stock_maximo > 0 %}
+                                    <span class="stock-ok fw-bold">{{ insumo.cantidad_insumo }}</span>
                                 {% else %}
                                     <span class="fw-bold">{{ insumo.cantidad_insumo }}</span>
-                                    <small class="d-block text-muted-sm">Sin turno</small>
                                 {% endif %}
                             </td>
                             <td>{{ insumo.get_unidad_medida_display }}</td>
+                            <td>{{ insumo.stock_maximo }}</td>
+                            <td>
+                                {% if insumo.stock_maximo > 0 %}
+                                    <span class="{% if insumo.bajo_stock_30 %}text-danger{% else %}text-success{% endif %}">
+                                        {{ insumo.porcentaje_del_maximo }}%
+                                    </span>
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if insumo.stock_maximo == 0 %}
+                                    <span class="badge bg-secondary">Sin turno</span>
+                                {% elif insumo.cantidad_insumo == 0 %}
+                                    <span class="badge bg-danger">Sin stock</span>
+                                {% elif insumo.bajo_stock_30 %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fas fa-exclamation-triangle"></i> Bajo stock
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-success">OK</span>
+                                {% endif %}
+                            </td>
                             <td class="fw-bold text-success">${{ insumo.precio_insumo|floatformat:0 }}</td>
                             <td class="text-center">
-                                <a href="{% url 'inventario:agregar_stock_insumo' insumo.id_insumo %}" class="btn btn-sm btn-success" title="Agregar stock">
-                                    <i class="fas fa-plus"></i>
-                                </a>
                                 <a href="{% url 'inventario:editar_insumo' insumo.id_insumo %}" class="btn btn-sm btn-warning">
                                     <i class="fas fa-edit"></i> Editar
                                 </a>
@@ -110,7 +152,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-4">
+                            <td colspan="11" class="text-center text-muted py-4">
                                 No hay insumos registrados aún.
                             </td>
                         </tr>

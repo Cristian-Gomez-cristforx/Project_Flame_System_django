@@ -14,7 +14,7 @@
 
     <div class="card shadow">
         <div class="card-body">
-            <form method="POST">
+            <form method="POST" id="bebida-form" novalidate>
                 {% csrf_token %}
 
                 <div class="row">
@@ -22,10 +22,12 @@
                         <label class="form-label">Nombre de la Bebida</label>
                         <input type="text" name="nombre_bebida" class="form-control"
                                value="{{ bebida.nombre_bebida }}" required>
+                        <div class="field-error text-danger small mt-1" data-for="nombre_bebida"></div>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Tamaño</label>
                         <select name="tamaño_bebida" class="form-select" required>
+                            <option value="">-- Seleccionar tamaño --</option>
                             {% for value, label in tamaño_choices %}
                                 <option value="{{ value }}"
                                     {% if value == bebida.tamaño_bebida %}selected{% endif %}>
@@ -33,35 +35,53 @@
                                 </option>
                             {% endfor %}
                         </select>
+                        <div class="field-error text-danger small mt-1" data-for="tamaño_bebida"></div>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Cantidad en Stock</label>
-                        <input type="number" name="cantidad_bebida" class="form-control"
-                               value="{{ bebida.cantidad_bebida }}" min="1" required>
+                        <input type="number" name="cantidad_bebida" class="form-control solo-enteros"
+                               value="{{ bebida.cantidad_bebida }}" min="1" step="1" inputmode="numeric" pattern="\d*" required>
+                        <div class="field-error text-danger small mt-1" data-for="cantidad_bebida"></div>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Compra</label>
-                        <input type="number" name="precio_compra" class="form-control"
-                               value="{{ bebida.precio_compra }}" min="1" required>
+                        <input type="number" name="precio_compra" class="form-control solo-enteros"
+                               value="{{ bebida.precio_compra|floatformat:0 }}" min="1" step="1" inputmode="numeric" pattern="\d*" required>
+                        <div class="field-error text-danger small mt-1" data-for="precio_compra"></div>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Venta</label>
-                        <input type="number" name="precio_venta" class="form-control"
-                               value="{{ bebida.precio_venta }}" min="1" required>
+                        <input type="number" name="precio_venta" class="form-control solo-enteros"
+                               value="{{ bebida.precio_venta|floatformat:0 }}" min="1" step="1" inputmode="numeric" pattern="\d*" required>
+                        <div class="field-error text-danger small mt-1" data-for="precio_venta"></div>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-12 mb-3">
-                        {% include 'temp_inventario/_categoria_field.html' with field_key='bebida' current_categoria_id=bebida.categoria_id %}
+                        {% include 'temp_inventario/_categoria_field.html' with field_key='bebida' current_categoria_id=bebida.categoria_id errors=form.categoria.errors nueva_errors=form.nueva_categoria.errors %}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">Cantidad adicional (reabastecer)</label>
+                        <input type="number" name="cantidad_a_agregar" class="form-control solo-enteros"
+                               value="0" min="0" step="1" inputmode="numeric" pattern="\d*">
+                        <small class="text-muted">
+                            Suma stock manteniendo el margen de ganancia actual. No puedes usarlo a la vez que modificas cantidad, tamaño o precios.
+                        </small>
+                        {% if form.cantidad_a_agregar.errors %}
+                            <div class="text-danger small mt-1">{{ form.cantidad_a_agregar.errors|join:', ' }}</div>
+                        {% endif %}
                     </div>
                 </div>
 
                 <div class="d-flex gap-2 mt-3">
-                    <button type="submit" class="btn btn-warning">
+                    <button type="submit" id="submit-btn" class="btn btn-warning">
                         <i class="fas fa-save"></i> Actualizar Bebida
                     </button>
                     <a href="{% url 'inventario:listar_bebidas' %}" class="btn btn-secondary">Cancelar</a>
@@ -70,4 +90,74 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.solo-enteros').forEach(input => {
+    input.addEventListener('keydown', e => {
+        if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+    });
+    input.addEventListener('input', e => {
+        e.target.value = e.target.value.replace(/[^\d]/g, '');
+    });
+});
+
+(function () {
+    const form = document.getElementById('bebida-form');
+    if (!form) return;
+    const submitBtn = document.getElementById('submit-btn');
+
+    const q = (name) => form.querySelector(`[name="${name}"]`);
+    const err = (name) => form.querySelector(`.field-error[data-for="${name}"]`);
+    const setErr = (name, msg) => {
+        const el = err(name);
+        if (!el) return;
+        el.textContent = msg || '';
+        const input = q(name);
+        if (input) input.classList.toggle('is-invalid', !!msg);
+    };
+
+    const validators = {
+        nombre_bebida: v => v.trim() ? '' : 'Ingresa el nombre.',
+        tamaño_bebida: v => v ? '' : 'Selecciona un tamaño.',
+        cantidad_bebida: v => (parseInt(v, 10) >= 1) ? '' : 'La cantidad debe ser al menos 1.',
+        precio_compra: v => (parseInt(v, 10) >= 1) ? '' : 'El precio de compra debe ser al menos 1.',
+        precio_venta: v => {
+            const venta = parseInt(v, 10);
+            const compra = parseInt(q('precio_compra').value, 10);
+            if (!(venta >= 1)) return 'El precio de venta debe ser al menos 1.';
+            if (!isNaN(compra) && venta <= compra) return 'El precio de venta debe ser mayor que el de compra.';
+            return '';
+        },
+    };
+
+    const touched = new Set();
+
+    function validateAll() {
+        let ok = true;
+        for (const name in validators) {
+            const input = q(name);
+            if (!input) continue;
+            const msg = validators[name](input.value);
+            if (msg) ok = false;
+            setErr(name, touched.has(name) ? msg : '');
+        }
+        return ok;
+    }
+
+    for (const name in validators) {
+        const input = q(name);
+        if (!input) continue;
+        input.addEventListener('input', validateAll);
+        input.addEventListener('change', validateAll);
+        input.addEventListener('blur', validateAll);
+    }
+
+    form.addEventListener('submit', (e) => {
+        for (const name in validators) touched.add(name);
+        if (!validateAll()) e.preventDefault();
+    });
+})();
+</script>
 {% endblock %}

@@ -117,6 +117,8 @@ class Insumo(models.Model):
         # Ejecutar validaciones
         self.full_clean()
 
+        edito_cantidad_directamente = False
+
         if self.pk:
 
             insumo_original = Insumo.objects.get(pk=self.pk)
@@ -155,8 +157,15 @@ class Insumo(models.Model):
                 # Reiniciar el campo temporal
                 self.cantidad_a_agregar = 0
 
+            elif self.cantidad_insumo != insumo_original.cantidad_insumo:
+                edito_cantidad_directamente = True
+        else:
+            edito_cantidad_directamente = True
+
         # Actualizar stock máximo
-        if self.cantidad_insumo > self.stock_maximo:
+        if edito_cantidad_directamente:
+            self.stock_maximo = self.cantidad_insumo
+        elif self.cantidad_insumo > self.stock_maximo:
             self.stock_maximo = self.cantidad_insumo
 
         # Actualizar precio por gramo
@@ -223,12 +232,24 @@ class Bebida(models.Model):
     cantidad_a_agregar = models.PositiveIntegerField(default=0, null=True, blank=True,verbose_name="Cantidad adicional")
     precio_unitario_compra = models.DecimalField(max_digits=8, decimal_places=0, default=0, verbose_name="Precio Unitario Compra")
     precio_unitario_venta = models.DecimalField(max_digits=8, decimal_places=0, default=0,verbose_name="Precio Unitario Venta")
-    bajo_stock_30 = models.PositiveIntegerField(default =0,verbose_name="Bajo Stock 30%", editable=False)
-    
+    stock_maximo  = models.PositiveIntegerField(default=0, editable=False)
+
     class Meta:
         verbose_name = "Bebida"
         verbose_name_plural = "Bebidas"
         ordering = ['nombre_bebida']
+
+    @property
+    def bajo_stock_30(self):
+        if self.stock_maximo > 0:
+            return self.cantidad_bebida <= (self.stock_maximo * 0.3)
+        return False
+
+    @property
+    def porcentaje_del_maximo(self):
+        if self.stock_maximo > 0:
+            return round((self.cantidad_bebida / self.stock_maximo) * 100, 1)
+        return 100
 
     def __str__(self):
         return f"{self.nombre_bebida} ({self.tamaño_bebida})"
@@ -286,9 +307,6 @@ class Bebida(models.Model):
 
         self.full_clean()
         
-        if not self.pk:
-            self.bajo_stock_30 = int(self.cantidad_bebida * 0.3)
-
         if self.pk:
             bebida_original = Bebida.objects.get(pk=self.pk)
 
@@ -334,7 +352,9 @@ class Bebida(models.Model):
                 # reiniciar
                 self.cantidad_a_agregar = 0
 
-      
+        if self.cantidad_bebida > self.stock_maximo:
+            self.stock_maximo = self.cantidad_bebida
+
         if self.cantidad_bebida > 0:
             self.precio_unitario_compra = (
                 Decimal(self.precio_compra) / Decimal(self.cantidad_bebida)
@@ -357,15 +377,7 @@ class Bebida(models.Model):
 class RecetaProducto(models.Model):
     producto = models.OneToOneField(Producto, on_delete=models.CASCADE, related_name='receta')
     activa   = models.BooleanField(default=True)
-    
-    @property
-    def ganancia_estimada(self):
-        return (
-            self.producto.precio_producto -
-            self.costo_preparacion
-        )
-        
-    
+
     @property
     def costo_preparacion(self):
         total = Decimal('0.00')

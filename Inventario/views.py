@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
@@ -15,9 +16,8 @@ from .forms import (
     InsumoForm,
     MermaForm,
     ProductoForm,
-    RecetaProductoForm,
 )
-from .models import Bebida, Categoria, Insumo, Merma, Producto, RecetaProducto, DetalleReceta
+from .models import Bebida, Categoria, Insumo, Merma, Producto, RecetaProducto
 
 
 @admin_requerido
@@ -25,17 +25,49 @@ def inventario(request):
     return render(request, 'temp_inventario/inventario.html')
 
 
+def _contexto_orden_id(request):
+    """Devuelve orden actual y URL con orden invertido para el toggle de la columna ID."""
+    actual = request.GET.get('orden', '')
+    params = request.GET.copy()
+    params['orden'] = 'desc' if actual == 'asc' else 'asc'
+    return {
+        'orden_actual': actual,
+        'orden_url': params.urlencode(),
+    }
+
+
 # ====================== INSUMOS ======================
 @admin_requerido
 def listar_insumos(request):
-    insumos = Insumo.objects.all().order_by('nombre_insumo')
+    insumos = Insumo.objects.select_related('categoria').order_by('nombre_insumo')
     q = request.GET.get('q', '').strip()
+    unidad = request.GET.get('unidad', '').strip()
+    categoria_id = request.GET.get('categoria', '').strip()
+
     if q:
         insumos = insumos.filter(
             Q(nombre_insumo__icontains=q) |
             Q(id_insumo=q) if q.isdigit() else Q(nombre_insumo__icontains=q)
         )
-    return render(request, 'temp_inventario/listar_insumos.html', {'insumos': insumos})
+    if unidad:
+        insumos = insumos.filter(unidad_medida=unidad)
+    if categoria_id.isdigit():
+        insumos = insumos.filter(categoria_id=categoria_id)
+
+    orden = request.GET.get('orden', '')
+    if orden == 'asc':
+        insumos = insumos.order_by('id_insumo')
+    elif orden == 'desc':
+        insumos = insumos.order_by('-id_insumo')
+
+    return render(request, 'temp_inventario/listar_insumos.html', {
+        'insumos': insumos,
+        'unidades': Insumo.UNIDAD_CHOICES,
+        'categorias': Categoria.objects.filter(tipo=Categoria.Tipo.INSUMO).order_by('nombre_categoria'),
+        'unidad_actual': unidad,
+        'categoria_actual': categoria_id,
+        **_contexto_orden_id(request),
+    })
 
 
 @admin_requerido
@@ -83,6 +115,12 @@ def listar_productos(request):
             Q(id_producto=q) if q.isdigit() else Q(nombre_producto__icontains=q)
         )
 
+    orden = request.GET.get('orden', '')
+    if orden == 'asc':
+        productos = productos.order_by('id_producto')
+    elif orden == 'desc':
+        productos = productos.order_by('-id_producto')
+
     productos_info = []
     for producto in productos:
         try:
@@ -91,14 +129,12 @@ def listar_productos(request):
             tiene_receta = True
             detalles = list(receta.detalles.select_related('insumo').all())
             costo_prep = receta.costo_preparacion
-            ganancia = receta.ganancia_estimada
         except RecetaProducto.DoesNotExist:
             receta = None
             unidades = 0
             tiene_receta = False
             detalles = []
             costo_prep = None
-            ganancia = None
 
         productos_info.append({
             'producto': producto,
@@ -107,10 +143,12 @@ def listar_productos(request):
             'receta': receta,
             'detalles': detalles,
             'costo_preparacion': costo_prep,
-            'ganancia_estimada': ganancia,
         })
 
-    return render(request, 'temp_inventario/listar_producto.html', {'productos_info': productos_info})
+    return render(request, 'temp_inventario/listar_producto.html', {
+        'productos_info': productos_info,
+        **_contexto_orden_id(request),
+    })
 
 
 @admin_requerido
@@ -171,15 +209,36 @@ def editar_producto(request, id):
 # ====================== BEBIDAS ======================
 @admin_requerido
 def listar_bebidas(request):
-    bebidas = Bebida.objects.all().order_by('nombre_bebida')
+    bebidas = Bebida.objects.select_related('categoria').order_by('nombre_bebida')
     q = request.GET.get('q', '').strip()
+    tamaño = request.GET.get('tamaño', '').strip()
+    categoria_id = request.GET.get('categoria', '').strip()
+
     if q:
         bebidas = bebidas.filter(
             Q(nombre_bebida__icontains=q) |
             Q(categoria__nombre_categoria__icontains=q) |
             Q(id_bebida=q) if q.isdigit() else Q(nombre_bebida__icontains=q)
         )
-    return render(request, 'temp_inventario/listar_bebida.html', {'bebidas': bebidas})
+    if tamaño:
+        bebidas = bebidas.filter(tamaño_bebida=tamaño)
+    if categoria_id.isdigit():
+        bebidas = bebidas.filter(categoria_id=categoria_id)
+
+    orden = request.GET.get('orden', '')
+    if orden == 'asc':
+        bebidas = bebidas.order_by('id_bebida')
+    elif orden == 'desc':
+        bebidas = bebidas.order_by('-id_bebida')
+
+    return render(request, 'temp_inventario/listar_bebida.html', {
+        'bebidas': bebidas,
+        'tamaños': Bebida.TAMAÑO_CHOICES,
+        'categorias': Categoria.objects.filter(tipo=Categoria.Tipo.BEBIDA).order_by('nombre_categoria'),
+        'tamaño_actual': tamaño,
+        'categoria_actual': categoria_id,
+        **_contexto_orden_id(request),
+    })
 
 
 @admin_requerido
@@ -219,7 +278,15 @@ def editar_bebida(request, id):
 @admin_requerido
 def listar_mermas(request):
     mermas = Merma.objects.all().order_by('-fecha_merma')
-    return render(request, 'temp_inventario/listar_mermas.html', {'mermas': mermas})
+    orden = request.GET.get('orden', '')
+    if orden == 'asc':
+        mermas = mermas.order_by('id_merma')
+    elif orden == 'desc':
+        mermas = mermas.order_by('-id_merma')
+    return render(request, 'temp_inventario/listar_mermas.html', {
+        'mermas': mermas,
+        **_contexto_orden_id(request),
+    })
 
 
 @admin_requerido
@@ -234,9 +301,11 @@ def crear_merma(request):
         )
         return redirect('inventario:listar_mermas')
 
+    User = get_user_model()
     return render(request, 'temp_inventario/crear_merma.html', {
         'form': form,
         'insumos': Insumo.objects.all().order_by('nombre_insumo'),
+        'usuarios': User.objects.filter(is_active=True).order_by('username'),
     })
 
 
@@ -289,96 +358,6 @@ def cerrar_turno(request):
     return redirect('inventario:listar_insumos')
 
 
-# ====================== RECETAS ======================
-@admin_requerido
-def listar_recetas(request):
-    recetas = (
-        RecetaProducto.objects
-        .select_related('producto')
-        .prefetch_related('detalles__insumo')
-        .order_by('producto__nombre_producto')
-    )
-    q = request.GET.get('q', '').strip()
-    if q:
-        recetas = recetas.filter(producto__nombre_producto__icontains=q)
-
-    recetas_info = [
-        {
-            'receta': r,
-            'unidades_posibles': r.cuantas_unidades_posibles(),
-        }
-        for r in recetas
-    ]
-
-    return render(request, 'temp_inventario/listar_recetas.html', {'recetas_info': recetas_info})
-
-
-@admin_requerido
-def crear_receta(request):
-    if request.method == 'POST':
-        form = RecetaProductoForm(request.POST)
-        formset = DetalleRecetaFormSet(request.POST, prefix='detalles')
-
-        if form.is_valid() and formset.is_valid():
-            try:
-                with transaction.atomic():
-                    receta = form.save()
-                    formset.instance = receta
-                    formset.save()
-                    receta.full_clean()
-                messages.success(request, f'Receta de "{receta.producto.nombre_producto}" creada.')
-                return redirect('inventario:listar_recetas')
-            except ValidationError as e:
-                messages.error(request, '; '.join(e.messages))
-    else:
-        form = RecetaProductoForm()
-        formset = DetalleRecetaFormSet(prefix='detalles')
-
-    return render(request, 'temp_inventario/crear_receta.html', {
-        'form': form,
-        'formset': formset,
-    })
-
-
-@admin_requerido
-def editar_receta(request, id):
-    receta = get_object_or_404(RecetaProducto, pk=id)
-
-    if request.method == 'POST':
-        form = RecetaProductoForm(request.POST, instance=receta)
-        formset = DetalleRecetaFormSet(request.POST, instance=receta, prefix='detalles')
-
-        if form.is_valid() and formset.is_valid():
-            try:
-                with transaction.atomic():
-                    form.save()
-                    formset.save()
-                    receta.full_clean()
-                messages.success(request, 'Receta actualizada.')
-                return redirect('inventario:listar_recetas')
-            except ValidationError as e:
-                messages.error(request, '; '.join(e.messages))
-    else:
-        form = RecetaProductoForm(instance=receta)
-        formset = DetalleRecetaFormSet(instance=receta, prefix='detalles')
-
-    return render(request, 'temp_inventario/editar_receta.html', {
-        'form': form,
-        'formset': formset,
-        'receta': receta,
-    })
-
-
-@admin_requerido
-@require_POST
-def eliminar_receta(request, id):
-    receta = get_object_or_404(RecetaProducto, pk=id)
-    nombre = receta.producto.nombre_producto
-    receta.delete()
-    messages.success(request, f'Receta de "{nombre}" eliminada.')
-    return redirect('inventario:listar_recetas')
-
-
 # ====================== CATEGORÍAS ======================
 @admin_requerido
 def listar_categorias(request):
@@ -387,10 +366,17 @@ def listar_categorias(request):
     if tipo:
         categorias = categorias.filter(tipo=tipo)
 
+    orden = request.GET.get('orden', '')
+    if orden == 'asc':
+        categorias = categorias.order_by('id')
+    elif orden == 'desc':
+        categorias = categorias.order_by('-id')
+
     return render(request, 'temp_inventario/listar_categorias.html', {
         'categorias': categorias,
         'tipos': Categoria.Tipo.choices,
         'tipo_actual': tipo,
+        **_contexto_orden_id(request),
     })
 
 

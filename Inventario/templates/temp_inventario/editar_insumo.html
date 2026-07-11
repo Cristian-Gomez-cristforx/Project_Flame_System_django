@@ -14,13 +14,13 @@
 
     <div class="card shadow">
         <div class="card-body">
-            <form method="POST">
+            <form method="POST" id="insumo-form">
                 {% csrf_token %}
 
                 <div class="row">
                     <div class="col-md-12 mb-3">
                         <label class="form-label">Nombre del Insumo</label>
-                        <input type="text" name="nombre_insumo" class="form-control" 
+                        <input type="text" name="nombre_insumo" class="form-control"
                                value="{{ insumo.nombre_insumo }}" required>
                     </div>
                 </div>
@@ -28,14 +28,14 @@
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Cantidad</label>
-                        <input type="number" name="cantidad_insumo" class="form-control" 
+                        <input type="number" name="cantidad_insumo" id="cantidad_insumo" class="form-control"
                                value="{{ insumo.cantidad_insumo }}" min="1" required>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Unidad de Medida</label>
-                        <select name="unidad_medida" class="form-select" required>
+                        <select name="unidad_medida" id="unidad_medida" class="form-select" required>
                             {% for value, label in unidades %}
-                                <option value="{{ value }}" 
+                                <option value="{{ value }}"
                                     {% if value == insumo.unidad_medida %}selected{% endif %}>
                                     {{ label }}
                                 </option>
@@ -44,14 +44,22 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio</label>
-                        <input type="number" name="precio_insumo" class="form-control"
+                        <input type="number" name="precio_insumo" id="precio_insumo" class="form-control"
                                value="{{ insumo.precio_insumo }}" min="1" required>
+                    </div>
+                </div>
+
+                <div class="alert alert-info d-flex align-items-center gap-2 py-2" id="precio-unitario-info">
+                    <i class="fas fa-calculator"></i>
+                    <div>
+                        <strong>Precio por <span id="unidad-label">{% if insumo.unidad_medida == 'g' %}gramo{% else %}unidad{% endif %}</span>:</strong>
+                        <span id="precio-unitario-valor">${{ insumo.precio_gramo }}</span>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-12 mb-3">
-                        {% include 'temp_inventario/_categoria_field.html' with field_key='insumo' current_categoria_id=insumo.categoria_id %}
+                        {% include 'temp_inventario/_categoria_field.html' with field_key='insumo' current_categoria_id=insumo.categoria_id errors=form.categoria.errors nueva_errors=form.nueva_categoria.errors %}
                     </div>
                 </div>
 
@@ -76,4 +84,40 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const cantidad = document.getElementById('cantidad_insumo');
+    const precio = document.getElementById('precio_insumo');
+    const unidad = document.getElementById('unidad_medida');
+    const valorEl = document.getElementById('precio-unitario-valor');
+    const unidadLabel = document.getElementById('unidad-label');
+
+    const unidadNombre = () => {
+        if (!unidad) return 'unidad';
+        return unidad.value === 'g' ? 'gramo' : 'unidad';
+    };
+
+    function actualizar() {
+        const c = parseFloat(cantidad.value);
+        const p = parseFloat(precio.value);
+        unidadLabel.textContent = unidadNombre();
+        if (!isFinite(c) || !isFinite(p) || c <= 0) {
+            valorEl.textContent = '$0';
+            return;
+        }
+        const valor = p / c;
+        valorEl.textContent = '$' + valor.toLocaleString('es-CO', { maximumFractionDigits: 2 });
+    }
+
+    [cantidad, precio, unidad].forEach(el => {
+        if (!el) return;
+        el.addEventListener('input', actualizar);
+        el.addEventListener('change', actualizar);
+    });
+    actualizar();
+})();
+</script>
 {% endblock %}

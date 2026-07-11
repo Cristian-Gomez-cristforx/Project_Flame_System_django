@@ -14,7 +14,7 @@
 
     <div class="card shadow">
         <div class="card-body">
-            <form method="POST" novalidate>
+            <form method="POST" id="producto-form" novalidate>
                 {% csrf_token %}
 
                 <div class="row">
@@ -22,14 +22,16 @@
                         <label class="form-label">Nombre del Producto</label>
                         <input type="text" name="nombre_producto" class="form-control"
                                value="{{ producto.nombre_producto }}" required>
+                        <div class="field-error text-danger small mt-1" data-for="nombre_producto"></div>
                         {% if form.nombre_producto.errors %}
                             <div class="text-danger small">{{ form.nombre_producto.errors|join:', ' }}</div>
                         {% endif %}
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Venta</label>
-                        <input type="number" name="precio_producto" class="form-control" min="1"
+                        <input type="number" name="precio_producto" class="form-control" step="1" min="1"
                                value="{{ producto.precio_producto }}" required>
+                        <div class="field-error text-danger small mt-1" data-for="precio_producto"></div>
                         {% if form.precio_producto.errors %}
                             <div class="text-danger small">{{ form.precio_producto.errors|join:', ' }}</div>
                         {% endif %}
@@ -54,8 +56,8 @@
                 {% endif %}
 
                 <hr>
-                <h5><i class="fas fa-list"></i> Ingredientes de la Receta</h5>
-                <p class="text-muted-sm">Cada insumo con la cantidad requerida por unidad de producto.</p>
+                <h5><i class="fas fa-book text-warning"></i> Receta</h5>
+                <p class="text-muted-sm">Insumos y cantidades requeridas para preparar una unidad de este producto.</p>
 
                 {{ formset.management_form }}
                 {% if formset.non_form_errors %}
@@ -93,13 +95,14 @@
                         </div>
                     {% endfor %}
                 </div>
+                <div class="field-error text-danger small mt-1" data-for="detalles"></div>
 
                 <button type="button" id="add-detalle" class="btn btn-sm btn-outline-primary mt-2">
                     <i class="fas fa-plus"></i> Agregar insumo
                 </button>
 
                 <div class="d-flex gap-2 mt-4">
-                    <button type="submit" class="btn btn-warning">
+                    <button type="submit" id="submit-btn" class="btn btn-warning">
                         <i class="fas fa-save"></i> Actualizar Producto
                     </button>
                     <a href="{% url 'inventario:listar_productos' %}" class="btn btn-secondary">Cancelar</a>
@@ -135,7 +138,84 @@
         template.querySelectorAll('.text-danger').forEach(el => el.remove());
         container.appendChild(template);
         totalForms.value = newIndex + 1;
+        bindRowListeners();
+        validateAll();
     });
+
+    const form = document.getElementById('producto-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const q = (name) => form.querySelector(`[name="${name}"]`);
+    const err = (name) => form.querySelector(`.field-error[data-for="${name}"]`);
+    const setErr = (name, msg) => {
+        const el = err(name);
+        if (!el) return;
+        el.textContent = msg || '';
+        const input = q(name);
+        if (input) input.classList.toggle('is-invalid', !!msg);
+    };
+
+    const validators = {
+        nombre_producto: v => v.trim() ? '' : 'Ingresa el nombre.',
+        precio_producto: v => (parseInt(v, 10) >= 1) ? '' : 'El precio debe ser al menos 1.',
+    };
+
+    function validarDetalles() {
+        const rows = container.querySelectorAll('.detalle-row');
+        let algunoValido = false;
+        for (const row of rows) {
+            const insumo = row.querySelector('select[name$="-insumo"]');
+            const cantidad = row.querySelector('input[name$="-cantidad_requerida"]');
+            const del = row.querySelector('input[name$="-DELETE"]');
+            if (del && del.checked) continue;
+            if (insumo && insumo.value && cantidad && parseInt(cantidad.value, 10) >= 1) {
+                algunoValido = true;
+                break;
+            }
+        }
+        return algunoValido ? '' : 'Agrega al menos un insumo con cantidad requerida.';
+    }
+
+    const touched = new Set();
+
+    function validateAll() {
+        let ok = true;
+        for (const name in validators) {
+            const input = q(name);
+            if (!input) continue;
+            const msg = validators[name](input.value);
+            if (msg) ok = false;
+            setErr(name, touched.has(name) ? msg : '');
+        }
+        const detallesMsg = validarDetalles();
+        if (detallesMsg) ok = false;
+        setErr('detalles', touched.has('detalles') ? detallesMsg : '');
+        return ok;
+    }
+
+    function bindRowListeners() {
+        container.querySelectorAll('.detalle-row select, .detalle-row input').forEach(el => {
+            if (el.dataset.bound) return;
+            el.dataset.bound = '1';
+            el.addEventListener('input', validateAll);
+            el.addEventListener('change', validateAll);
+        });
+    }
+
+    for (const name in validators) {
+        const input = q(name);
+        if (!input) continue;
+        input.addEventListener('input', validateAll);
+        input.addEventListener('change', validateAll);
+        input.addEventListener('blur', validateAll);
+    }
+
+    form.addEventListener('submit', (e) => {
+        for (const name in validators) touched.add(name);
+        touched.add('detalles');
+        if (!validateAll()) e.preventDefault();
+    });
+
+    bindRowListeners();
 })();
 </script>
 {% endblock %}
