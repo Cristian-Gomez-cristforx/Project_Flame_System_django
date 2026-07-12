@@ -1,9 +1,13 @@
+from io import BytesIO
+
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
+from PIL import Image, ImageDraw, ImageFont
 
 from login_modify_django.decorators import admin_requerido, rol_requerido
 from login_modify_django.models import Perfil
@@ -354,6 +358,163 @@ def mesa_eliminar(request, mesa_id):
         mesa.delete()
         messages.success(request, f'Mesa {numero} eliminada.')
     return redirect('pedidos:mesas')
+
+
+def _fmt_moneda(valor):
+    entero = int(valor or 0)
+    return f'${entero:,.0f}'.replace(',', '.')
+
+
+_FUENTES_TTF = [
+    '/system/fonts/Roboto-Regular.ttf',
+    '/system/fonts/DroidSans.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    '/usr/share/fonts/dejavu/DejaVuSans.ttf',
+]
+_FUENTES_TTF_BOLD = [
+    '/system/fonts/Roboto-Medium.ttf',
+    '/system/fonts/DroidSans-Bold.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+    '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf',
+]
+
+
+def _cargar_fuente(rutas, size):
+    for ruta in rutas:
+        try:
+            return ImageFont.truetype(ruta, size=size)
+        except OSError:
+            continue
+    return ImageFont.load_default(size=size)
+
+
+@rol_requerido(*ROLES_PEDIDOS)
+def factura_imagen(request, pedido_id):
+    pedido = _get_pedido_detalle(pedido_id)
+
+    estados_permitidos = {
+        Pedido.EstadoPedido.COCINADO,
+        Pedido.EstadoPedido.PAGADO,
+        Pedido.EstadoPedido.FINALIZADO,
+    }
+    if pedido.estado not in estados_permitidos:
+        messages.error(request, 'La factura solo se puede descargar cuando el pedido está cocinado.')
+        return redirect('pedidos:lista')
+
+    totales = services.calcular_totales(pedido)
+
+    ancho = 560
+    margen_x = 36
+
+    fuente_marca = _cargar_fuente(_FUENTES_TTF_BOLD, 30)
+    fuente_titulo = _cargar_fuente(_FUENTES_TTF_BOLD, 22)
+    fuente_sub = _cargar_fuente(_FUENTES_TTF, 14)
+    fuente_seccion = _cargar_fuente(_FUENTES_TTF_BOLD, 14)
+    fuente_bold = _cargar_fuente(_FUENTES_TTF_BOLD, 13)
+    fuente = _cargar_fuente(_FUENTES_TTF, 13)
+    fuente_pequena = _cargar_fuente(_FUENTES_TTF, 11)
+
+    color_primario = (231, 76, 60)
+    color_texto = (33, 37, 41)
+    color_gris = (108, 117, 125)
+    color_linea = (222, 226, 230)
+    color_fondo_alt = (248, 249, 250)
+
+    lineas_meta = [
+        ('Fecha', pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M')),
+        ('Tipo', pedido.get_tipo_display()),
+        ('Mesero', pedido.mesero.get_username()),
+    ]
+    if pedido.mesa:
+        lineas_meta.append(('Mesa', f'Mesa {pedido.mesa.numero_mesa}'))
+    if pedido.nombre_cliente:
+        lineas_meta.append(('Cliente', pedido.nombre_cliente))
+    if pedido.telefono_cliente:
+        lineas_meta.append(('Teléfono', pedido.telefono_cliente))
+    if pedido.direccion_pedi:
+        lineas_meta.append(('Dirección', pedido.direccion_pedi))
+    if pedido.tipo_pago:
+        lineas_meta.append(('Pago', pedido.get_tipo_pago_display()))
+
+    productos = list(pedido.productos.all())
+    bebidas = list(pedido.bebidas.all())
+
+    alto_header = 110
+    alto_factura = 46
+    alto_meta = 20 + 22 * len(lineas_meta) + 16
+    alto_productos = (34 + 26 * len(productos) + 12) if productos else 0
+    alto_bebidas = (34 + 26 * len(bebidas) + 12) if bebidas else 0
+    alto_total = 70
+    alto_footer = 60
+
+    alto = alto_header + alto_factura + alto_meta + alto_productos + alto_bebidas + alto_total + alto_footer
+
+    img = Image.new('RGB', (ancho, alto), 'white')
+    draw = ImageDraw.Draw(img)
+
+    draw.rectangle([(0, 0), (ancho, alto_header)], fill=color_primario)
+    draw.text((ancho // 2, 30), 'FLAME SYSTEM', font=fuente_marca, fill='white', anchor='mt')
+    draw.text((ancho // 2, 68), 'Comprobante de pedido', font=fuente_sub, fill=(255, 235, 230), anchor='mt')
+
+    y = alto_header + 14
+    draw.rectangle([(margen_x, y), (ancho - margen_x, y + 32)], fill=color_fondo_alt)
+    draw.text((margen_x + 12, y + 16), 'FACTURA', font=fuente_bold, fill=color_gris, anchor='lm')
+    draw.text((ancho - margen_x - 12, y + 16), pedido.numero_factura or '—',
+              font=fuente_titulo, fill=color_primario, anchor='rm')
+    y += 46
+
+    for etiqueta, valor in lineas_meta:
+        draw.text((margen_x, y), etiqueta, font=fuente_bold, fill=color_gris)
+        draw.text((ancho - margen_x, y), str(valor), font=fuente, fill=color_texto, anchor='rt')
+        y += 22
+    y += 12
+
+    def _dibujar_seccion(titulo, items, obtener_nombre):
+        nonlocal y
+        draw.line([(margen_x, y), (ancho - margen_x, y)], fill=color_linea, width=1)
+        y += 10
+        draw.text((margen_x, y), titulo, font=fuente_seccion, fill=color_primario)
+        draw.text((ancho - margen_x, y), 'SUBTOTAL', font=fuente_pequena, fill=color_gris, anchor='rt')
+        y += 22
+        for idx, d in enumerate(items):
+            if idx % 2 == 1:
+                draw.rectangle(
+                    [(margen_x - 6, y - 4), (ancho - margen_x + 6, y + 20)],
+                    fill=color_fondo_alt,
+                )
+            draw.text((margen_x, y), f'{d.cantidad}x', font=fuente_bold, fill=color_texto)
+            draw.text((margen_x + 34, y), obtener_nombre(d), font=fuente, fill=color_texto)
+            draw.text((ancho - margen_x, y), _fmt_moneda(d.subtotal), font=fuente_bold, fill=color_texto, anchor='rt')
+            y += 26
+        y += 8
+
+    if productos:
+        _dibujar_seccion('PRODUCTOS', productos, lambda d: d.producto.nombre_producto)
+
+    if bebidas:
+        _dibujar_seccion('BEBIDAS', bebidas, lambda d: d.bebida.nombre_bebida)
+
+    draw.line([(margen_x, y), (ancho - margen_x, y)], fill=color_texto, width=2)
+    y += 14
+    draw.rectangle(
+        [(margen_x, y), (ancho - margen_x, y + 44)],
+        fill=color_primario,
+    )
+    draw.text((margen_x + 16, y + 22), 'TOTAL', font=fuente_titulo, fill='white', anchor='lm')
+    draw.text((ancho - margen_x - 16, y + 22), _fmt_moneda(totales['total']),
+              font=fuente_titulo, fill='white', anchor='rm')
+    y += 60
+
+    draw.text((ancho // 2, y), '¡Gracias por su compra!', font=fuente_sub, fill=color_texto, anchor='mt')
+
+    buffer = BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+
+    nombre = f'{pedido.numero_factura or f"pedido-{pedido.id_pedido}"}.png'
+    response = HttpResponse(buffer.getvalue(), content_type='image/png')
+    response['Content-Disposition'] = f'attachment; filename="{nombre}"'
+    return response
 
 
 @rol_requerido(*ROLES_COCINA)

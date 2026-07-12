@@ -1,3 +1,6 @@
+from collections import defaultdict
+from decimal import Decimal
+
 from django import forms
 from django.core.validators import MaxLengthValidator, MinLengthValidator
 
@@ -155,9 +158,18 @@ class AgregarProductoForm(forms.Form):
         )
 
         ya_en_pedido = {}
+        consumo_pedido = defaultdict(lambda: Decimal('0'))
         if pedido is not None:
-            for d in pedido.productos.all():
+            detalles_pedido = (
+                pedido.productos
+                .prefetch_related('insumos__insumo')
+                .all()
+            )
+            for d in detalles_pedido:
                 ya_en_pedido[d.producto_id] = ya_en_pedido.get(d.producto_id, 0) + d.cantidad
+                for di in d.insumos.all():
+                    if di.usar:
+                        consumo_pedido[di.insumo_id] += Decimal(di.cantidad_requerida) * d.cantidad
 
         stock_por_producto = {}
         for prod in productos:
@@ -166,8 +178,21 @@ class AgregarProductoForm(forms.Form):
             except RecetaProducto.DoesNotExist:
                 stock_por_producto[prod.pk] = 0
                 continue
-            stock_real = receta.cuantas_unidades_posibles()
-            stock_por_producto[prod.pk] = max(0, stock_real - ya_en_pedido.get(prod.pk, 0))
+            detalles_receta = list(receta.detalles.all())
+            if not detalles_receta:
+                stock_por_producto[prod.pk] = 0
+                continue
+            posibles_min = None
+            for detalle in detalles_receta:
+                if detalle.cantidad_requerida <= 0:
+                    continue
+                disponible = Decimal(detalle.insumo.cantidad_insumo) - consumo_pedido.get(detalle.insumo_id, Decimal('0'))
+                posibles = int(disponible // Decimal(detalle.cantidad_requerida))
+                if posibles < 0:
+                    posibles = 0
+                if posibles_min is None or posibles < posibles_min:
+                    posibles_min = posibles
+            stock_por_producto[prod.pk] = max(0, posibles_min or 0)
 
         self.fields['producto'].queryset = productos
         self.fields['producto'].label_from_instance = (

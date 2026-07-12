@@ -68,9 +68,16 @@
                     </td>
                     <td class="text-muted-sm">{{ p.fecha_creacion|date:"d M H:i" }}</td>
                     <td class="text-end">
-                        <a href="{% url 'pedidos:detalle' p.id_pedido %}" class="btn btn-sm btn-outline-primary">
-                            Ver <i class="fas fa-arrow-right ms-1"></i>
-                        </a>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <a href="{% url 'pedidos:detalle' p.id_pedido %}" class="btn btn-outline-primary">
+                                Ver <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                            {% if p.estado == 'Cocinado' or p.estado == 'Pagado' or p.estado == 'Finalizado' %}
+                                <a href="{% url 'pedidos:factura_imagen' p.id_pedido %}" class="btn btn-outline-secondary" title="Descargar factura">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
             {% empty %}
