@@ -8,7 +8,9 @@ Parámetros:
     field_key            -- sufijo único para IDs (ej. "bebida", "producto")
     errors               -- lista de errores del campo (opcional)
     nueva_errors         -- lista de errores del campo nueva_categoria (opcional)
+    nueva_value          -- valor previo del input nueva_categoria (opcional)
 {% endcomment %}
+{% with nueva_open=nueva_value|default:'' %}
 <label class="form-label" for="id_categoria_{{ field_key }}">Categoría</label>
 <div class="categoria-field">
     <div class="input-group">
@@ -40,7 +42,7 @@ Parámetros:
         <div class="text-danger small mt-1">{{ errors|join:', ' }}</div>
     {% endif %}
 
-    <div class="nueva-categoria-wrapper mt-2 d-none">
+    <div class="nueva-categoria-wrapper mt-2{% if not nueva_open and not nueva_errors %} d-none{% endif %}">
         <div class="input-group">
             <span class="input-group-text bg-white">
                 <i class="fas fa-tag text-success"></i>
@@ -50,6 +52,7 @@ Parámetros:
                    id="id_nueva_categoria_{{ field_key }}"
                    class="form-control nueva-categoria-input"
                    placeholder="Nombre de la nueva categoría"
+                   value="{{ nueva_value|default_if_none:'' }}"
                    autocomplete="off">
             <button type="button" class="btn btn-outline-secondary cancel-nueva-categoria" title="Cancelar">
                 <i class="fas fa-times"></i>
@@ -61,6 +64,7 @@ Parámetros:
         {% endif %}
     </div>
 </div>
+{% endwith %}
 
 <div class="modal fade" id="editarCategoriaModal" tabindex="-1" aria-labelledby="editarCategoriaModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
@@ -142,6 +146,12 @@ Parámetros:
         cancelBtn?.addEventListener('click', hideNueva);
         select.addEventListener('change', actualizarEditarBtn);
         actualizarEditarBtn();
+
+        if (!nuevaWrapper.classList.contains('d-none')) {
+            select.disabled = true;
+            input.required = true;
+            toggleBtn.classList.add('active');
+        }
 
         editarBtn?.addEventListener('click', () => abrirModalEditar(select));
 

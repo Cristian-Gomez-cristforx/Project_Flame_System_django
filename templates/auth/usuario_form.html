@@ -153,12 +153,17 @@
         const LETRAS = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/;
         const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         const DIGITOS = /^\d+$/;
+        const USERNAME = /^[\p{L}\p{N}_.@+\-]+$/u;
 
         const reglas = [
             {
                 id: '{{ form.username.id_for_label }}',
                 required: true,
                 requiredMsg: 'El nombre de usuario es obligatorio.',
+                pattern: USERNAME,
+                patternMsg: 'El usuario solo admite letras, números y los símbolos . _ @ + -',
+                max: 150,
+                lengthMsg: 'El usuario no puede superar 150 caracteres.',
             },
             {
                 id: '{{ form.email.id_for_label }}',

@@ -10,6 +10,10 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard, name='dashboard'),
 
+    path('recuperar/', views.recuperar_solicitar, name='recuperar_solicitar'),
+    path('recuperar/verificar/', views.recuperar_verificar, name='recuperar_verificar'),
+    path('recuperar/cambiar/', views.recuperar_cambiar, name='recuperar_cambiar'),
+
     path('usuarios/', views.usuarios_lista, name='usuarios_lista'),
     path('usuarios/nuevo/', views.usuario_crear, name='usuario_crear'),
     path('usuarios/<int:user_id>/editar/', views.usuario_editar, name='usuario_editar'),

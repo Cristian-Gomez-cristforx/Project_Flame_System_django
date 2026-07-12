@@ -1,7 +1,12 @@
+import hashlib
+import secrets
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 
 class Perfil(models.Model):
@@ -51,3 +56,56 @@ def crear_perfil_para_usuario(sender, instance, created, **kwargs):
     if created:
         rol = Perfil.Rol.ADMIN if instance.is_superuser else Perfil.Rol.MESERO
         Perfil.objects.create(usuario=instance, rol=rol)
+
+
+class RecuperacionContrasena(models.Model):
+    PIN_VIGENCIA_MIN = 15
+    MAX_INTENTOS = 5
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='recuperaciones',
+    )
+    pin_hash = models.CharField(max_length=64)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    expira_en = models.DateTimeField()
+    intentos = models.PositiveIntegerField(default=0)
+    verificado = models.BooleanField(default=False)
+    usado = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-creado_en']
+
+    @staticmethod
+    def _hash(pin: str) -> str:
+        return hashlib.sha256(pin.encode('utf-8')).hexdigest()
+
+    @classmethod
+    def generar_para(cls, usuario):
+        cls.objects.filter(usuario=usuario, usado=False).update(usado=True)
+        pin = f'{secrets.randbelow(1000000):06d}'
+        recup = cls.objects.create(
+            usuario=usuario,
+            pin_hash=cls._hash(pin),
+            expira_en=timezone.now() + timedelta(minutes=cls.PIN_VIGENCIA_MIN),
+        )
+        return recup, pin
+
+    def esta_vigente(self):
+        return (
+            not self.usado
+            and self.expira_en > timezone.now()
+            and self.intentos < self.MAX_INTENTOS
+        )
+
+    def verificar(self, pin: str) -> bool:
+        if not self.esta_vigente():
+            return False
+        self.intentos += 1
+        if self._hash(pin) == self.pin_hash:
+            self.verificado = True
+            self.save(update_fields=['verificado', 'intentos'])
+            return True
+        self.save(update_fields=['intentos'])
+        return False

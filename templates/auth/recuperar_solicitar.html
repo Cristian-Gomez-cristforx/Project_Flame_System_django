@@ -1,0 +1,31 @@
+{% extends 'auth/_auth_shell.html' %}
+
+{% block title %}Recuperar contraseña{% endblock %}
+{% block title_desktop %}¿Olvidaste tu contraseña?{% endblock %}
+{% block subtitle_desktop %}Te enviaremos un código para restablecerla{% endblock %}
+{% block card_title %}Recuperar contraseña{% endblock %}
+{% block card_subtitle %}Ingresa tu usuario o correo{% endblock %}
+
+{% block card_body %}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-4">
+            <label for="{{ form.identificador.id_for_label }}" class="form-label">Usuario o correo</label>
+            <div class="login-field">
+                <i class="fas fa-envelope field-icon"></i>
+                {{ form.identificador }}
+            </div>
+            {% if form.identificador.errors %}
+                <div class="text-danger small mt-1">{{ form.identificador.errors|join:" " }}</div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">
+            <i class="fas fa-paper-plane me-1"></i> Enviar código
+        </button>
+    </form>
+
+    <a href="{% url 'login_modify:login' %}" class="aux-link aux-link-muted">
+        <i class="fas fa-arrow-left me-1"></i> Volver al inicio de sesión
+    </a>
+{% endblock %}

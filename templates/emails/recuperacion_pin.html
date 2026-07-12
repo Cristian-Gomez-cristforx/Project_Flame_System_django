@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recuperación de cuenta</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f0eb; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#2b2320;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f4f0eb; padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width:560px; width:100%; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(31,27,24,0.12);">
+
+          <tr>
+            <td style="background:linear-gradient(135deg,#b83a08 0%,#d9480f 55%,#f59f00 100%); padding:40px 32px; text-align:center;">
+              <h1 style="color:#ffffff; margin:0; font-size:28px; font-weight:700; letter-spacing:0.5px;">Flame System</h1>
+              <p style="color:#ffe0b8; margin:6px 0 0; font-size:12px; letter-spacing:2px; text-transform:uppercase;">Plataforma de gestión operativa</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:40px 40px 24px;">
+              <h2 style="color:#2b2320; margin:0 0 8px; font-size:20px; font-weight:700;">Recuperación de contraseña</h2>
+              <p style="color:#5c5148; font-size:15px; line-height:1.6; margin:0 0 8px;">Hola <strong style="color:#2b2320;">{{ username }}</strong>,</p>
+              <p style="color:#5c5148; font-size:15px; line-height:1.6; margin:0;">
+                Recibimos una solicitud para restablecer la contraseña de tu cuenta. Ingresa el siguiente código de verificación para continuar con el proceso.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 40px 24px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#faf6f1; border:1px solid #e5ddd4; border-radius:12px;">
+                <tr>
+                  <td style="padding:28px 24px; text-align:center;">
+                    <p style="color:#7a6d64; font-size:11px; margin:0 0 14px; letter-spacing:3px; text-transform:uppercase; font-weight:600;">Código de verificación</p>
+                    <div style="font-family:'SF Mono','Menlo','Monaco','Consolas',monospace; color:#d9480f; font-size:38px; font-weight:700; letter-spacing:12px; padding:8px 0;">{{ pin }}</div>
+                    <p style="color:#a99f95; font-size:12px; margin:14px 0 0;">Válido por <strong style="color:#5c5148;">{{ pin_minutos }} minutos</strong></p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 40px;">
+              <div style="border-top:1px solid #e5ddd4;"></div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:28px 40px 36px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td width="44" valign="top" style="padding-right:14px;">
+                    <div style="width:36px; height:36px; background-color:#fff1e0; border-radius:50%; text-align:center; line-height:36px;">
+                      <span style="color:#d9480f; font-size:18px; font-weight:700;">?</span>
+                    </div>
+                  </td>
+                  <td valign="top">
+                    <p style="color:#2b2320; font-size:14px; font-weight:600; margin:0 0 4px;">¿No fuiste tú?</p>
+                    <p style="color:#7a6d64; font-size:13px; line-height:1.6; margin:0;">
+                      Puedes ignorar este mensaje con tranquilidad. Tu cuenta permanece segura y no se realizó ningún cambio. Si detectas actividad sospechosa, contacta al administrador del sistema.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:#1f1b18; padding:24px 32px; text-align:center;">
+              <p style="color:#f5e4d1; font-size:13px; margin:0 0 4px; font-weight:600;">Flame System</p>
+              <p style="color:#8a7d72; font-size:11px; margin:0; letter-spacing:0.3px;">© {{ year }} Flame System · Plataforma de gestión operativa</p>
+            </td>
+          </tr>
+
+        </table>
+
+        <p style="color:#a99f95; font-size:11px; margin:16px 0 0; max-width:560px;">Este es un correo automático, por favor no respondas a esta dirección.</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

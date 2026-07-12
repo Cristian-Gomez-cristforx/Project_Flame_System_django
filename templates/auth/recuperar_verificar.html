@@ -1,0 +1,37 @@
+{% extends 'auth/_auth_shell.html' %}
+
+{% block title %}Verificar código{% endblock %}
+{% block title_desktop %}Verificar código{% endblock %}
+{% block subtitle_desktop %}Ingresa el código que enviamos a tu correo{% endblock %}
+{% block card_title %}Código de verificación{% endblock %}
+{% block card_subtitle %}Enviado a {{ email_destino }}{% endblock %}
+
+{% block card_body %}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-4">
+            <label for="{{ form.pin.id_for_label }}" class="form-label">Código de 6 dígitos</label>
+            <div class="login-field">
+                <i class="fas fa-key field-icon"></i>
+                {{ form.pin }}
+            </div>
+            {% if form.pin.errors %}
+                <div class="text-danger small mt-1">{{ form.pin.errors|join:" " }}</div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">
+            <i class="fas fa-check me-1"></i> Verificar
+        </button>
+    </form>
+
+    <a href="{% url 'login_modify:recuperar_solicitar' %}" class="aux-link aux-link-muted">
+        <i class="fas fa-redo me-1"></i> Enviar un nuevo código
+    </a>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('{{ form.pin.id_for_label }}').classList.add('pin-input');
+</script>
+{% endblock %}

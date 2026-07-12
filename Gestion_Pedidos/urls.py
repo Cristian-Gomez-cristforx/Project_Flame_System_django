@@ -20,5 +20,5 @@ urlpatterns = [
     path('<int:pedido_id>/cambiar-estado/', views.cambiar_estado, name='cambiar_estado'),
     path('<int:pedido_id>/cambiar-mesa/', views.cambiar_mesa, name='cambiar_mesa'),
     path('<int:pedido_id>/cobrar/', views.cobrar_pedido, name='cobrar'),
-    path('<int:pedido_id>/factura.png', views.factura_imagen, name='factura_imagen'),
+    path('<int:pedido_id>/factura.pdf', views.factura_imagen, name='factura_imagen'),
 ]

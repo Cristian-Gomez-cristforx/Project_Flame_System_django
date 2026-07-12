@@ -7,7 +7,10 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
-from PIL import Image, ImageDraw, ImageFont
+from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
 
 from login_modify_django.decorators import admin_requerido, rol_requerido
 from login_modify_django.models import Perfil
@@ -365,27 +368,58 @@ def _fmt_moneda(valor):
     return f'${entero:,.0f}'.replace(',', '.')
 
 
-_FUENTES_TTF = [
-    '/system/fonts/Roboto-Regular.ttf',
-    '/system/fonts/DroidSans.ttf',
-    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-    '/usr/share/fonts/dejavu/DejaVuSans.ttf',
-]
-_FUENTES_TTF_BOLD = [
-    '/system/fonts/Roboto-Medium.ttf',
-    '/system/fonts/DroidSans-Bold.ttf',
-    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
-    '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf',
-]
+_FUENTES_FACTURA_REGISTRADAS = False
 
 
-def _cargar_fuente(rutas, size):
-    for ruta in rutas:
+def _registrar_fuentes_factura():
+    global _FUENTES_FACTURA_REGISTRADAS
+    if _FUENTES_FACTURA_REGISTRADAS:
+        return
+    rutas_reg = [
+        '/system/fonts/Roboto-Regular.ttf',
+        '/system/fonts/DroidSans.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/dejavu/DejaVuSans.ttf',
+    ]
+    rutas_bold = [
+        '/system/fonts/Roboto-Medium.ttf',
+        '/system/fonts/DroidSans-Bold.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+        '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf',
+    ]
+    for r in rutas_reg:
         try:
-            return ImageFont.truetype(ruta, size=size)
-        except OSError:
+            pdfmetrics.registerFont(TTFont('FacturaBase', r))
+            break
+        except Exception:
             continue
-    return ImageFont.load_default(size=size)
+    for r in rutas_bold:
+        try:
+            pdfmetrics.registerFont(TTFont('FacturaBold', r))
+            break
+        except Exception:
+            continue
+    _FUENTES_FACTURA_REGISTRADAS = True
+
+
+def _f_base():
+    return 'FacturaBase' if 'FacturaBase' in pdfmetrics.getRegisteredFontNames() else 'Helvetica'
+
+
+def _f_bold():
+    if 'FacturaBold' in pdfmetrics.getRegisteredFontNames():
+        return 'FacturaBold'
+    if 'FacturaBase' in pdfmetrics.getRegisteredFontNames():
+        return 'FacturaBase'
+    return 'Helvetica-Bold'
+
+
+def _truncar(texto, ancho_max_pt, fuente, size):
+    if pdfmetrics.stringWidth(texto, fuente, size) <= ancho_max_pt:
+        return texto
+    while texto and pdfmetrics.stringWidth(texto + '…', fuente, size) > ancho_max_pt:
+        texto = texto[:-1]
+    return texto + '…'
 
 
 @rol_requerido(*ROLES_PEDIDOS)
@@ -402,23 +436,13 @@ def factura_imagen(request, pedido_id):
         return redirect('pedidos:lista')
 
     totales = services.calcular_totales(pedido)
+    _registrar_fuentes_factura()
+    fb = _f_base()
+    fB = _f_bold()
 
-    ancho = 560
-    margen_x = 36
-
-    fuente_marca = _cargar_fuente(_FUENTES_TTF_BOLD, 30)
-    fuente_titulo = _cargar_fuente(_FUENTES_TTF_BOLD, 22)
-    fuente_sub = _cargar_fuente(_FUENTES_TTF, 14)
-    fuente_seccion = _cargar_fuente(_FUENTES_TTF_BOLD, 14)
-    fuente_bold = _cargar_fuente(_FUENTES_TTF_BOLD, 13)
-    fuente = _cargar_fuente(_FUENTES_TTF, 13)
-    fuente_pequena = _cargar_fuente(_FUENTES_TTF, 11)
-
-    color_primario = (231, 76, 60)
-    color_texto = (33, 37, 41)
-    color_gris = (108, 117, 125)
-    color_linea = (222, 226, 230)
-    color_fondo_alt = (248, 249, 250)
+    ancho = 80 * mm
+    margen = 6 * mm
+    ancho_util = ancho - 2 * margen
 
     lineas_meta = [
         ('Fecha', pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M')),
@@ -439,80 +463,105 @@ def factura_imagen(request, pedido_id):
     productos = list(pedido.productos.all())
     bebidas = list(pedido.bebidas.all())
 
-    alto_header = 110
-    alto_factura = 46
-    alto_meta = 20 + 22 * len(lineas_meta) + 16
-    alto_productos = (34 + 26 * len(productos) + 12) if productos else 0
-    alto_bebidas = (34 + 26 * len(bebidas) + 12) if bebidas else 0
-    alto_total = 70
-    alto_footer = 60
-
-    alto = alto_header + alto_factura + alto_meta + alto_productos + alto_bebidas + alto_total + alto_footer
-
-    img = Image.new('RGB', (ancho, alto), 'white')
-    draw = ImageDraw.Draw(img)
-
-    draw.rectangle([(0, 0), (ancho, alto_header)], fill=color_primario)
-    draw.text((ancho // 2, 30), 'FLAME SYSTEM', font=fuente_marca, fill='white', anchor='mt')
-    draw.text((ancho // 2, 68), 'Comprobante de pedido', font=fuente_sub, fill=(255, 235, 230), anchor='mt')
-
-    y = alto_header + 14
-    draw.rectangle([(margen_x, y), (ancho - margen_x, y + 32)], fill=color_fondo_alt)
-    draw.text((margen_x + 12, y + 16), 'FACTURA', font=fuente_bold, fill=color_gris, anchor='lm')
-    draw.text((ancho - margen_x - 12, y + 16), pedido.numero_factura or '—',
-              font=fuente_titulo, fill=color_primario, anchor='rm')
-    y += 46
-
-    for etiqueta, valor in lineas_meta:
-        draw.text((margen_x, y), etiqueta, font=fuente_bold, fill=color_gris)
-        draw.text((ancho - margen_x, y), str(valor), font=fuente, fill=color_texto, anchor='rt')
-        y += 22
-    y += 12
-
-    def _dibujar_seccion(titulo, items, obtener_nombre):
-        nonlocal y
-        draw.line([(margen_x, y), (ancho - margen_x, y)], fill=color_linea, width=1)
-        y += 10
-        draw.text((margen_x, y), titulo, font=fuente_seccion, fill=color_primario)
-        draw.text((ancho - margen_x, y), 'SUBTOTAL', font=fuente_pequena, fill=color_gris, anchor='rt')
-        y += 22
-        for idx, d in enumerate(items):
-            if idx % 2 == 1:
-                draw.rectangle(
-                    [(margen_x - 6, y - 4), (ancho - margen_x + 6, y + 20)],
-                    fill=color_fondo_alt,
-                )
-            draw.text((margen_x, y), f'{d.cantidad}x', font=fuente_bold, fill=color_texto)
-            draw.text((margen_x + 34, y), obtener_nombre(d), font=fuente, fill=color_texto)
-            draw.text((ancho - margen_x, y), _fmt_moneda(d.subtotal), font=fuente_bold, fill=color_texto, anchor='rt')
-            y += 26
-        y += 8
-
-    if productos:
-        _dibujar_seccion('PRODUCTOS', productos, lambda d: d.producto.nombre_producto)
-
-    if bebidas:
-        _dibujar_seccion('BEBIDAS', bebidas, lambda d: d.bebida.nombre_bebida)
-
-    draw.line([(margen_x, y), (ancho - margen_x, y)], fill=color_texto, width=2)
-    y += 14
-    draw.rectangle(
-        [(margen_x, y), (ancho - margen_x, y + 44)],
-        fill=color_primario,
-    )
-    draw.text((margen_x + 16, y + 22), 'TOTAL', font=fuente_titulo, fill='white', anchor='lm')
-    draw.text((ancho - margen_x - 16, y + 22), _fmt_moneda(totales['total']),
-              font=fuente_titulo, fill='white', anchor='rm')
-    y += 60
-
-    draw.text((ancho // 2, y), '¡Gracias por su compra!', font=fuente_sub, fill=color_texto, anchor='mt')
+    alto_header = 62
+    alto_factura = 30
+    alto_meta = 6 + 12 * len(lineas_meta) + 8
+    alto_prod = (26 + 14 * len(productos) + 6) if productos else 0
+    alto_beb = (26 + 14 * len(bebidas) + 6) if bebidas else 0
+    alto_total = 46
+    alto_gracias = 34
+    alto = 14 + alto_header + alto_factura + alto_meta + alto_prod + alto_beb + alto_total + alto_gracias
 
     buffer = BytesIO()
-    img.save(buffer, format='PNG')
-    buffer.seek(0)
+    c = canvas.Canvas(buffer, pagesize=(ancho, alto))
+    c.setFillColorRGB(0, 0, 0)
+    c.setStrokeColorRGB(0, 0, 0)
 
-    nombre = f'{pedido.numero_factura or f"pedido-{pedido.id_pedido}"}.png'
-    response = HttpResponse(buffer.getvalue(), content_type='image/png')
+    def y_at(offset_desde_arriba):
+        return alto - offset_desde_arriba
+
+    def linea_divisora(y_top, punteada=True, grosor=0.6):
+        c.setLineWidth(grosor)
+        if punteada:
+            c.setDash([1.5, 1.8])
+        else:
+            c.setDash([])
+        c.line(margen, y_at(y_top), ancho - margen, y_at(y_top))
+        c.setDash([])
+
+    cursor = 18
+    c.setFont(fB, 15)
+    c.drawCentredString(ancho / 2, y_at(cursor + 12), 'FLAME SYSTEM')
+    cursor += 20
+    c.setFont(fb, 9)
+    c.drawCentredString(ancho / 2, y_at(cursor + 10), 'Comprobante de pedido')
+    cursor += 22
+    linea_divisora(cursor)
+    cursor += 10
+
+    c.setFont(fB, 10)
+    c.drawString(margen, y_at(cursor + 10), 'FACTURA')
+    c.setFont(fB, 12)
+    c.drawRightString(ancho - margen, y_at(cursor + 10), pedido.numero_factura or '—')
+    cursor += 20
+    linea_divisora(cursor)
+    cursor += 10
+
+    for etiqueta, valor in lineas_meta:
+        c.setFont(fB, 8.5)
+        c.drawString(margen, y_at(cursor + 9), etiqueta)
+        c.setFont(fb, 8.5)
+        ancho_valor = ancho_util - pdfmetrics.stringWidth(etiqueta, fB, 8.5) - 8
+        c.drawRightString(ancho - margen, y_at(cursor + 9), _truncar(str(valor), ancho_valor, fb, 8.5))
+        cursor += 12
+    cursor += 8
+
+    def dibujar_seccion(titulo, items, obtener_nombre):
+        nonlocal cursor
+        linea_divisora(cursor)
+        cursor += 8
+        c.setFont(fB, 9.5)
+        c.drawString(margen, y_at(cursor + 10), titulo)
+        c.setFont(fb, 8)
+        c.drawRightString(ancho - margen, y_at(cursor + 10), 'SUBTOTAL')
+        cursor += 16
+        for d in items:
+            c.setFont(fB, 9)
+            c.drawString(margen, y_at(cursor + 10), f'{d.cantidad}x')
+            c.setFont(fb, 9)
+            nombre = obtener_nombre(d)
+            ancho_nombre = ancho_util - 24 - pdfmetrics.stringWidth(_fmt_moneda(d.subtotal), fB, 9) - 6
+            c.drawString(margen + 20, y_at(cursor + 10), _truncar(nombre, ancho_nombre, fb, 9))
+            c.setFont(fB, 9)
+            c.drawRightString(ancho - margen, y_at(cursor + 10), _fmt_moneda(d.subtotal))
+            cursor += 14
+        cursor += 6
+
+    if productos:
+        dibujar_seccion('PRODUCTOS', productos, lambda d: d.producto.nombre_producto)
+    if bebidas:
+        dibujar_seccion('BEBIDAS', bebidas, lambda d: d.bebida.nombre_bebida)
+
+    linea_divisora(cursor, punteada=False, grosor=1)
+    cursor += 12
+
+    c.setLineWidth(1)
+    c.rect(margen, y_at(cursor + 30), ancho_util, 30, stroke=1, fill=0)
+    c.setFont(fB, 13)
+    c.drawString(margen + 10, y_at(cursor + 20), 'TOTAL')
+    c.drawRightString(ancho - margen - 10, y_at(cursor + 20), _fmt_moneda(totales['total']))
+    cursor += 44
+
+    linea_divisora(cursor)
+    cursor += 14
+    c.setFont(fb, 9)
+    c.drawCentredString(ancho / 2, y_at(cursor + 10), '¡Gracias por su compra!')
+
+    c.showPage()
+    c.save()
+
+    nombre = f'{pedido.numero_factura or f"pedido-{pedido.id_pedido}"}.pdf'
+    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{nombre}"'
     return response
 

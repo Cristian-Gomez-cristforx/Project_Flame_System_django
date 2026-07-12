@@ -20,7 +20,7 @@
                 <div class="row">
                     <div class="col-md-8 mb-3">
                         <label class="form-label">Nombre del Producto</label>
-                        <input type="text" name="nombre_producto" class="form-control"
+                        <input type="text" name="nombre_producto" class="form-control solo-letras"
                                value="{{ form.nombre_producto.value|default_if_none:'' }}" required>
                         <div class="field-error text-danger small mt-1" data-for="nombre_producto"></div>
                         {% if form.nombre_producto.errors %}
@@ -29,7 +29,8 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Venta</label>
-                        <input type="number" name="precio_producto" class="form-control" step="1" min="1"
+                        <input type="number" name="precio_producto" class="form-control solo-enteros"
+                               step="1" min="1" inputmode="numeric" pattern="\d*"
                                value="{{ form.precio_producto.value|default_if_none:'' }}" required>
                         <div class="field-error text-danger small mt-1" data-for="precio_producto"></div>
                         {% if form.precio_producto.errors %}
@@ -111,6 +112,24 @@
 
 {% block extra_js %}
 <script>
+document.querySelectorAll('.solo-enteros').forEach(input => {
+    input.addEventListener('keydown', e => {
+        if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+    });
+    input.addEventListener('input', e => {
+        e.target.value = e.target.value.replace(/[^\d]/g, '');
+    });
+});
+
+const RE_SOLO_LETRAS_TXT = /[^A-Za-zÁÉÍÓÚÜáéíóúüÑñ ]+/g;
+document.querySelectorAll('.solo-letras').forEach(input => {
+    input.addEventListener('input', e => {
+        const antes = e.target.value;
+        const limpio = antes.replace(RE_SOLO_LETRAS_TXT, '');
+        if (antes !== limpio) e.target.value = limpio;
+    });
+});
+
 (function () {
     const container = document.getElementById('formset-detalles');
     const addBtn = document.getElementById('add-detalle');
@@ -200,8 +219,14 @@
         if (input) input.classList.toggle('is-invalid', !!msg);
     };
 
+    const RE_NOMBRE_PROD = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ ]+$/;
     const validators = {
-        nombre_producto: v => v.trim() ? '' : 'Ingresa el nombre.',
+        nombre_producto: v => {
+            const s = v.trim();
+            if (!s) return 'Ingresa el nombre.';
+            if (!RE_NOMBRE_PROD.test(s)) return 'El nombre solo permite letras y espacios.';
+            return '';
+        },
         precio_producto: v => (parseInt(v, 10) >= 1) ? '' : 'El precio debe ser al menos 1.',
     };
 

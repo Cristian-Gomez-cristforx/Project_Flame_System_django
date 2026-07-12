@@ -223,6 +223,69 @@ class UsuarioEditForm(forms.ModelForm):
         return user
 
 
+class SolicitudRecuperacionForm(forms.Form):
+    identificador = forms.CharField(
+        label='Usuario o correo',
+        widget=forms.TextInput(attrs={
+            **BOOTSTRAP_INPUT,
+            'placeholder': 'Usuario o correo electrónico',
+            'autocomplete': 'username',
+            'autofocus': True,
+        }),
+    )
+
+    def clean_identificador(self):
+        valor = (self.cleaned_data.get('identificador') or '').strip()
+        if not valor:
+            raise forms.ValidationError('Ingresa tu usuario o correo.')
+        return valor
+
+
+class VerificarPinForm(forms.Form):
+    pin = forms.CharField(
+        label='Código de verificación',
+        min_length=6, max_length=6,
+        widget=forms.TextInput(attrs={
+            **NUMERIC_ATTRS,
+            'placeholder': '••••••',
+            'maxlength': '6',
+            'autocomplete': 'one-time-code',
+            'autofocus': True,
+        }),
+        validators=[solo_numeros],
+    )
+
+
+class NuevaContrasenaForm(forms.Form):
+    password1 = forms.CharField(
+        label='Nueva contraseña',
+        widget=forms.PasswordInput(attrs={
+            **BOOTSTRAP_INPUT,
+            'placeholder': 'Nueva contraseña',
+            'autocomplete': 'new-password',
+            'autofocus': True,
+        }),
+        min_length=8,
+    )
+    password2 = forms.CharField(
+        label='Confirmar contraseña',
+        widget=forms.PasswordInput(attrs={
+            **BOOTSTRAP_INPUT,
+            'placeholder': 'Confirmar contraseña',
+            'autocomplete': 'new-password',
+        }),
+        min_length=8,
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get('password1')
+        p2 = cleaned.get('password2')
+        if p1 and p2 and p1 != p2:
+            self.add_error('password2', 'Las contraseñas no coinciden.')
+        return cleaned
+
+
 class PerfilForm(forms.ModelForm):
     class Meta:
         model = Perfil

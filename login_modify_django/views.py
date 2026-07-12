@@ -1,19 +1,34 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, logout as django_logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.db.models import DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .decorators import admin_requerido
-from .forms import LoginForm, UsuarioCreateForm, UsuarioEditForm
-from .models import Perfil
+from .forms import (
+    LoginForm,
+    NuevaContrasenaForm,
+    SolicitudRecuperacionForm,
+    UsuarioCreateForm,
+    UsuarioEditForm,
+    VerificarPinForm,
+)
+from .models import Perfil, RecuperacionContrasena
+
+
+_SIGNER_SALT = 'flamesystem.recuperacion'
+_TOKEN_MAX_AGE_SEG = 15 * 60
 
 
 User = get_user_model()
@@ -149,6 +164,147 @@ def dashboard(request):
         'alertas_stock': alertas_stock,
     }
     return render(request, 'auth/dashboard.html', context)
+
+
+def _buscar_usuario(identificador):
+    return (
+        User.objects
+        .filter(Q(username__iexact=identificador) | Q(email__iexact=identificador))
+        .first()
+    )
+
+
+def _enviar_pin_email(usuario, pin):
+    asunto = 'Flame System · Código para recuperar tu contraseña'
+    nombre = usuario.get_full_name() or usuario.get_username()
+    contexto = {
+        'username': nombre,
+        'pin': pin,
+        'pin_minutos': RecuperacionContrasena.PIN_VIGENCIA_MIN,
+        'year': timezone.now().year,
+    }
+    cuerpo_texto = (
+        f'Hola {nombre},\n\n'
+        f'Recibimos una solicitud para restablecer la contraseña de tu cuenta.\n\n'
+        f'Tu código de verificación es:  {pin}\n\n'
+        f'Este código expira en {RecuperacionContrasena.PIN_VIGENCIA_MIN} minutos. '
+        f'Si tú no solicitaste este cambio, ignora este correo.\n\n'
+        f'— Flame System'
+    )
+    cuerpo_html = render_to_string('emails/recuperacion_pin.html', contexto)
+    remitente = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or settings.EMAIL_HOST_USER
+    mensaje = EmailMultiAlternatives(asunto, cuerpo_texto, remitente, [usuario.email])
+    mensaje.attach_alternative(cuerpo_html, 'text/html')
+    mensaje.send(fail_silently=False)
+
+
+def recuperar_solicitar(request):
+    if request.user.is_authenticated:
+        return redirect('login_modify:dashboard')
+
+    if request.method == 'POST':
+        form = SolicitudRecuperacionForm(request.POST)
+        if form.is_valid():
+            identificador = form.cleaned_data['identificador']
+            usuario = _buscar_usuario(identificador)
+            if not usuario:
+                messages.error(request, 'No encontramos ningún usuario con ese usuario o correo.')
+            elif not usuario.is_active:
+                messages.error(request, 'La cuenta está inactiva. Contacta al administrador.')
+            elif not usuario.email:
+                messages.error(request, 'Este usuario no tiene un correo asociado. Contacta al administrador.')
+            else:
+                recup, pin = RecuperacionContrasena.generar_para(usuario)
+                try:
+                    _enviar_pin_email(usuario, pin)
+                except Exception:
+                    messages.error(request, 'No fue posible enviar el correo. Intenta de nuevo más tarde.')
+                    return render(request, 'auth/recuperar_solicitar.html', {'form': form})
+                request.session['recup_id'] = recup.pk
+                email = usuario.email
+                arroba = email.find('@')
+                messages.info(request, f'Enviamos un código al correo {email[:2]}***{email[arroba:]}.')
+                return redirect('login_modify:recuperar_verificar')
+    else:
+        form = SolicitudRecuperacionForm()
+
+    return render(request, 'auth/recuperar_solicitar.html', {'form': form})
+
+
+def recuperar_verificar(request):
+    if request.user.is_authenticated:
+        return redirect('login_modify:dashboard')
+
+    recup_id = request.session.get('recup_id')
+    if not recup_id:
+        return redirect('login_modify:recuperar_solicitar')
+
+    recup = RecuperacionContrasena.objects.filter(pk=recup_id).select_related('usuario').first()
+    if not recup:
+        request.session.pop('recup_id', None)
+        return redirect('login_modify:recuperar_solicitar')
+
+    if request.method == 'POST':
+        form = VerificarPinForm(request.POST)
+        if form.is_valid():
+            if not recup.esta_vigente():
+                messages.error(request, 'El código expiró o se superaron los intentos. Solicita uno nuevo.')
+                request.session.pop('recup_id', None)
+                return redirect('login_modify:recuperar_solicitar')
+            if recup.verificar(form.cleaned_data['pin']):
+                token = TimestampSigner(salt=_SIGNER_SALT).sign(str(recup.pk))
+                request.session['recup_token'] = token
+                request.session.pop('recup_id', None)
+                return redirect('login_modify:recuperar_cambiar')
+            restantes = max(0, RecuperacionContrasena.MAX_INTENTOS - recup.intentos)
+            messages.error(request, f'Código incorrecto. Te quedan {restantes} intento(s).')
+    else:
+        form = VerificarPinForm()
+
+    return render(request, 'auth/recuperar_verificar.html', {
+        'form': form,
+        'email_destino': recup.usuario.email,
+    })
+
+
+def recuperar_cambiar(request):
+    if request.user.is_authenticated:
+        return redirect('login_modify:dashboard')
+
+    token = request.session.get('recup_token')
+    if not token:
+        return redirect('login_modify:recuperar_solicitar')
+
+    try:
+        recup_id = TimestampSigner(salt=_SIGNER_SALT).unsign(token, max_age=_TOKEN_MAX_AGE_SEG)
+    except SignatureExpired:
+        request.session.pop('recup_token', None)
+        messages.error(request, 'La sesión de recuperación expiró. Solicita un nuevo código.')
+        return redirect('login_modify:recuperar_solicitar')
+    except BadSignature:
+        request.session.pop('recup_token', None)
+        return redirect('login_modify:recuperar_solicitar')
+
+    recup = RecuperacionContrasena.objects.filter(pk=recup_id, verificado=True, usado=False).select_related('usuario').first()
+    if not recup:
+        request.session.pop('recup_token', None)
+        return redirect('login_modify:recuperar_solicitar')
+
+    if request.method == 'POST':
+        form = NuevaContrasenaForm(request.POST)
+        if form.is_valid():
+            usuario = User.objects.get(pk=recup.usuario_id)
+            usuario.set_password(form.cleaned_data['password1'])
+            usuario.save()
+            recup.usado = True
+            recup.save(update_fields=['usado'])
+            request.session.pop('recup_token', None)
+            messages.success(request, 'Contraseña actualizada. Inicia sesión con tu nueva contraseña.')
+            return redirect('login_modify:login')
+    else:
+        form = NuevaContrasenaForm()
+
+    return render(request, 'auth/recuperar_cambiar.html', {'form': form})
 
 
 @admin_requerido

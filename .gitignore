@@ -11,3 +11,6 @@ db.sqlite3
 
 #ignorar archivos de intelleji
 /.idea
+
+# scripts locales de mantenimiento
+reset_db.py

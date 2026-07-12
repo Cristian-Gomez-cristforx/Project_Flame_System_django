@@ -17,21 +17,26 @@
             <form method="POST" id="bebida-form" novalidate>
                 {% csrf_token %}
 
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>
+                {% endif %}
+
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Nombre de la Bebida</label>
-                        <input type="text" name="nombre_bebida" class="form-control" required>
-                        <div class="field-error text-danger small mt-1" data-for="nombre_bebida"></div>
+                        <input type="text" name="nombre_bebida" class="form-control solo-letras"
+                               value="{{ form.nombre_bebida.value|default_if_none:'' }}" required>
+                        <div class="field-error text-danger small mt-1" data-for="nombre_bebida">{{ form.nombre_bebida.errors|join:" " }}</div>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Tamaño</label>
                         <select name="tamaño_bebida" class="form-select" required>
                             <option value="">-- Seleccionar tamaño --</option>
                             {% for value, label in tamaño_choices %}
-                                <option value="{{ value }}">{{ label }}</option>
+                                <option value="{{ value }}"{% if form.tamaño_bebida.value|stringformat:'s' == value|stringformat:'s' %} selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
-                        <div class="field-error text-danger small mt-1" data-for="tamaño_bebida"></div>
+                        <div class="field-error text-danger small mt-1" data-for="tamaño_bebida">{{ form.tamaño_bebida.errors|join:" " }}</div>
                     </div>
                 </div>
 
@@ -39,26 +44,29 @@
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Cantidad en Stock</label>
                         <input type="number" name="cantidad_bebida" class="form-control solo-enteros"
-                               min="1" step="1" inputmode="numeric" pattern="\d*" required>
-                        <div class="field-error text-danger small mt-1" data-for="cantidad_bebida"></div>
+                               min="1" step="1" inputmode="numeric" pattern="\d*"
+                               value="{{ form.cantidad_bebida.value|default_if_none:'' }}" required>
+                        <div class="field-error text-danger small mt-1" data-for="cantidad_bebida">{{ form.cantidad_bebida.errors|join:" " }}</div>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Compra</label>
                         <input type="number" name="precio_compra" class="form-control solo-enteros"
-                               min="1" step="1" inputmode="numeric" pattern="\d*" required>
-                        <div class="field-error text-danger small mt-1" data-for="precio_compra"></div>
+                               min="1" step="1" inputmode="numeric" pattern="\d*"
+                               value="{{ form.precio_compra.value|default_if_none:'' }}" required>
+                        <div class="field-error text-danger small mt-1" data-for="precio_compra">{{ form.precio_compra.errors|join:" " }}</div>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Venta</label>
                         <input type="number" name="precio_venta" class="form-control solo-enteros"
-                               min="1" step="1" inputmode="numeric" pattern="\d*" required>
-                        <div class="field-error text-danger small mt-1" data-for="precio_venta"></div>
+                               min="1" step="1" inputmode="numeric" pattern="\d*"
+                               value="{{ form.precio_venta.value|default_if_none:'' }}" required>
+                        <div class="field-error text-danger small mt-1" data-for="precio_venta">{{ form.precio_venta.errors|join:" " }}</div>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-12 mb-3">
-                        {% include 'temp_inventario/_categoria_field.html' with field_key='bebida' errors=form.categoria.errors nueva_errors=form.nueva_categoria.errors %}
+                        {% include 'temp_inventario/_categoria_field.html' with field_key='bebida' current_categoria_id=form.categoria.value nueva_value=form.nueva_categoria.value errors=form.categoria.errors nueva_errors=form.nueva_categoria.errors %}
                     </div>
                 </div>
 
@@ -85,6 +93,15 @@ document.querySelectorAll('.solo-enteros').forEach(input => {
     });
 });
 
+const RE_SOLO_LETRAS = /[^A-Za-zÁÉÍÓÚÜáéíóúüÑñ ]+/g;
+document.querySelectorAll('.solo-letras').forEach(input => {
+    input.addEventListener('input', e => {
+        const antes = e.target.value;
+        const limpio = antes.replace(RE_SOLO_LETRAS, '');
+        if (antes !== limpio) e.target.value = limpio;
+    });
+});
+
 (function () {
     const form = document.getElementById('bebida-form');
     if (!form) return;
@@ -100,8 +117,15 @@ document.querySelectorAll('.solo-enteros').forEach(input => {
         if (input) input.classList.toggle('is-invalid', !!msg);
     };
 
+    const RE_NOMBRE = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ ]+$/;
+
     const validators = {
-        nombre_bebida: v => v.trim() ? '' : 'Ingresa el nombre.',
+        nombre_bebida: v => {
+            const s = v.trim();
+            if (!s) return 'Ingresa el nombre.';
+            if (!RE_NOMBRE.test(s)) return 'El nombre solo permite letras y espacios.';
+            return '';
+        },
         tamaño_bebida: v => v ? '' : 'Selecciona un tamaño.',
         cantidad_bebida: v => (parseInt(v, 10) >= 1) ? '' : 'La cantidad debe ser al menos 1.',
         precio_compra: v => (parseInt(v, 10) >= 1) ? '' : 'El precio de compra debe ser al menos 1.',

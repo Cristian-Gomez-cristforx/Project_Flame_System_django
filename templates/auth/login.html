@@ -1,416 +1,80 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlameSystem - Iniciar sesión</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/flame.css' %}">
-    <style>
-        .login-shell {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background: radial-gradient(circle at 30% 20%, #2b2320 0%, #1f1b18 55%, #14100e 100%);
-            position: relative;
-            overflow: hidden;
-        }
-        .login-shell::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background:
-                radial-gradient(circle at 20% 30%, rgba(217, 72, 15, 0.25) 0%, transparent 55%),
-                radial-gradient(circle at 80% 70%, rgba(245, 159, 0, 0.15) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 0;
-        }
-        .login-brand-panel,
-        .login-card-panel {
-            position: relative;
-            z-index: 1;
-        }
+{% extends 'auth/_auth_shell.html' %}
 
-        /* ---- Brand panel (arriba en mobile, izquierda en desktop) ---- */
-        .login-brand-panel {
-            display: flex;
-            flex: 0 0 auto;
-            padding: 2.5rem 1.5rem 1rem;
-            color: var(--flame-sidebar-text);
-            position: relative;
-            overflow: hidden;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-brand-panel::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background:
-                radial-gradient(circle at 20% 30%, rgba(217, 72, 15, 0.25) 0%, transparent 55%),
-                radial-gradient(circle at 80% 70%, rgba(245, 159, 0, 0.15) 0%, transparent 50%);
-            pointer-events: none;
-            display: none;
-        }
-        .login-brand-content {
-            position: relative;
-            z-index: 1;
-            max-width: 480px;
-            text-align: center;
-        }
-        .login-brand-content .brand-icon {
-            font-size: 2.5rem;
-            color: var(--flame-accent);
-            filter: drop-shadow(0 6px 24px rgba(245, 159, 0, 0.35));
-            margin-bottom: 0.5rem;
-        }
-        .login-brand-content .brand-icon img {
-            width: 2.75rem;
-            height: 2.75rem;
-            object-fit: contain;
-        }
-        .login-card-header .mobile-brand img {
-            width: 1.25rem;
-            height: 1.25rem;
-            object-fit: contain;
-            vertical-align: middle;
-            margin-right: 0.25rem;
-        }
-        .login-brand-content h1 {
-            font-size: 2rem;
-            font-weight: 800;
-            letter-spacing: -1px;
-            margin: 0;
-            background: linear-gradient(135deg, #fff 0%, var(--flame-accent) 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .login-brand-content .tagline {
-            display: none;
-            font-size: 1.1rem;
-            margin-top: 1rem;
-            opacity: 0.75;
-            line-height: 1.5;
-        }
-        .login-brand-features {
-            display: none;
-            list-style: none;
-            padding: 0;
-            margin: 2.5rem 0 0;
-            text-align: left;
-        }
-        .login-brand-features li {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.5rem 0;
-            opacity: 0.85;
-        }
-        .login-brand-features i {
-            color: var(--flame-accent);
-            width: 1.5rem;
-            text-align: center;
-        }
+{% block title %}Iniciar sesión{% endblock %}
+{% block title_desktop %}Iniciar sesión{% endblock %}
+{% block subtitle_desktop %}Accede a tu panel de FlameSystem{% endblock %}
+{% block card_title %}Bienvenido{% endblock %}
+{% block card_subtitle %}Ingresa a tu cuenta{% endblock %}
 
-        /* ---- Card panel (derecha en desktop, debajo del brand en mobile) ---- */
-        .login-card-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            padding: 1rem 1.5rem 2rem;
-        }
-        .login-card-wrapper {
-            width: 100%;
-            max-width: 420px;
-        }
-        .login-card-title {
-            display: none;
-            color: var(--flame-sidebar-text);
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        .login-card-title h2 {
-            font-size: 3rem;
-            font-weight: 800;
-            margin: 0;
-            letter-spacing: -1px;
-        }
-        .login-card-title p {
-            opacity: 0.75;
-            margin: 0.5rem 0 0;
-            font-size: 1.1rem;
-        }
-        .login-card {
-            width: 100%;
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
-            padding: 2.5rem 2rem;
-        }
-        .login-card-header {
-            text-align: center;
-            margin-bottom: 1.75rem;
-        }
-        .login-card-header .mobile-brand {
-            display: none;
-        }
-        .login-card-header h2 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--flame-text);
-            margin: 0;
-        }
-        .login-card-header p {
-            color: var(--flame-muted);
-            margin: 0.25rem 0 0;
-            font-size: 0.9rem;
-        }
-        .login-card .form-label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--flame-muted);
-            margin-bottom: 0.4rem;
-        }
+{% block card_body %}
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger py-2">
+            {{ form.non_field_errors|join:" " }}
+        </div>
+    {% endif %}
 
-        /* ---- Inputs con icono ---- */
-        .login-field {
-            position: relative;
-        }
-        .login-field .field-icon {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--flame-muted);
-            font-size: 0.95rem;
-            pointer-events: none;
-            transition: color 0.15s ease;
-        }
-        .login-field .form-control {
-            padding: 0.85rem 1rem 0.85rem 2.75rem;
-            font-size: 0.95rem;
-            border: 1px solid #e5ddd4;
-            border-radius: 10px;
-            background-color: #faf6f1;
-            transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-        }
-        .login-field .form-control::placeholder {
-            color: #b0a498;
-        }
-        .login-field .form-control:hover {
-            background-color: #fff;
-        }
-        .login-field .form-control:focus {
-            background-color: #fff;
-            border-color: var(--flame-accent);
-            box-shadow: 0 0 0 4px rgba(245, 159, 0, 0.15);
-            outline: none;
-        }
-        .login-field:focus-within .field-icon {
-            color: var(--flame-primary);
-        }
-        .login-field .toggle-password {
-            position: absolute;
-            right: 0.75rem;
-            top: 50%;
-            transform: translateY(-50%);
-            background: transparent;
-            border: none;
-            color: var(--flame-muted);
-            padding: 0.25rem 0.5rem;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        .login-field .toggle-password:hover {
-            color: var(--flame-primary);
-        }
+    <form method="post" novalidate>
+        {% csrf_token %}
 
-        .login-card .btn-primary {
-            font-weight: 600;
-            letter-spacing: 0.3px;
-            padding: 0.85rem;
-            border-radius: 10px;
-            background-color: var(--flame-accent);
-            border-color: var(--flame-accent);
-            color: #1f1b18;
-            box-shadow: 0 6px 18px rgba(245, 159, 0, 0.3);
-            transition: transform 0.1s ease, box-shadow 0.15s ease, background-color 0.15s ease;
-        }
-        .login-card .btn-primary:hover,
-        .login-card .btn-primary:focus {
-            background-color: #e08a00;
-            border-color: #e08a00;
-            color: #1f1b18;
-            transform: translateY(-1px);
-            box-shadow: 0 10px 24px rgba(245, 159, 0, 0.45);
-        }
-        .login-card .btn-primary:active {
-            transform: translateY(0);
-            background-color: #c77800;
-            border-color: #c77800;
-        }
-
-        /* ---- Desktop layout ---- */
-        @media (min-width: 992px) {
-            .login-shell {
-                flex-direction: row;
-            }
-            .login-shell::before {
-                display: none;
-            }
-            .login-brand-panel {
-                flex: 1;
-                padding: 3rem;
-                align-items: center;
-                justify-content: center;
-            }
-            .login-brand-panel::before {
-                display: block;
-            }
-            .login-brand-content .brand-icon {
-                font-size: 4.5rem;
-                margin-bottom: 1rem;
-            }
-            .login-brand-content .brand-icon img {
-                width: 5rem;
-                height: 5rem;
-            }
-            .login-brand-content h1 {
-                font-size: 3.5rem;
-            }
-            .login-brand-content .tagline {
-                display: block;
-            }
-            .login-brand-features {
-                display: inline-block;
-            }
-            .login-card-panel {
-                justify-content: center;
-                padding: 2rem 1.5rem;
-            }
-            .login-card-title {
-                display: block;
-            }
-            .login-card-header {
-                margin-bottom: 1.25rem;
-            }
-            .login-card-header h2 {
-                display: none;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="login-shell">
-        <!-- IZQUIERDA en desktop -->
-        <aside class="login-brand-panel">
-            <div class="login-brand-content">
-                <div class="brand-icon"><img src="/media/admin-interface/favicon/favicon_mejorado.png" alt="FlameSystem"></div>
-                <h1>FlameSystem</h1>
-                <p class="tagline">Gestión inteligente para tu restaurante: pedidos, inventario y reportes en un solo lugar.</p>
-                <ul class="login-brand-features">
-                    <li><i class="fas fa-receipt"></i> Pedidos y cocina en tiempo real</li>
-                    <li><i class="fas fa-boxes-stacked"></i> Control de insumos y recetas</li>
-                    <li><i class="fas fa-chart-line"></i> Reportes de ventas y mermas</li>
-                </ul>
+        <div class="mb-3">
+            <label for="{{ form.username.id_for_label }}" class="form-label">Usuario</label>
+            <div class="login-field">
+                <i class="fas fa-user field-icon"></i>
+                {{ form.username }}
             </div>
-        </aside>
+            {% if form.username.errors %}
+                <div class="text-danger small mt-1">{{ form.username.errors|join:" " }}</div>
+            {% endif %}
+        </div>
 
-        <!-- DERECHA en desktop / centro en móvil -->
-        <section class="login-card-panel">
-            <div class="login-card-wrapper">
-                <div class="login-card-title">
-                    <h2>Iniciar sesión</h2>
-                    <p>Accede a tu panel de FlameSystem</p>
-                </div>
-                <div class="login-card">
-                    <div class="login-card-header">
-                        <div class="mobile-brand">
-                            <img src="/media/admin-interface/favicon/favicon_mejorado.png" alt=""> FlameSystem
-                        </div>
-                        <h2>Bienvenido</h2>
-                        <p>Ingresa a tu cuenta</p>
-                    </div>
-
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags|default:'info' }} py-2">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-
-                {% if form.non_field_errors %}
-                    <div class="alert alert-danger py-2">
-                        {{ form.non_field_errors|join:" " }}
-                    </div>
-                {% endif %}
-
-                <form method="post" novalidate>
-                    {% csrf_token %}
-
-                    <div class="mb-3">
-                        <label for="{{ form.username.id_for_label }}" class="form-label">Usuario</label>
-                        <div class="login-field">
-                            <i class="fas fa-user field-icon"></i>
-                            {{ form.username }}
-                        </div>
-                        {% if form.username.errors %}
-                            <div class="text-danger small mt-1">{{ form.username.errors|join:" " }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="{{ form.password.id_for_label }}" class="form-label">Contraseña</label>
-                        <div class="login-field">
-                            <i class="fas fa-lock field-icon"></i>
-                            {{ form.password }}
-                            <button type="button" class="toggle-password" data-target="{{ form.password.id_for_label }}" aria-label="Mostrar contraseña">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                        {% if form.password.errors %}
-                            <div class="text-danger small mt-1">{{ form.password.errors|join:" " }}</div>
-                        {% endif %}
-                    </div>
-
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-sign-in-alt me-1"></i> Ingresar
-                    </button>
-
-                    <input type="hidden" name="next" value="{{ next }}">
-                </form>
-                <script>
-                    document.querySelectorAll('.toggle-password').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            const target = document.getElementById(btn.dataset.target);
-                            if (!target) return;
-                            const isPassword = target.type === 'password';
-                            target.type = isPassword ? 'text' : 'password';
-                            btn.querySelector('i').className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
-                        });
-                    });
-
-                    (function () {
-                        const username = document.getElementById('{{ form.username.id_for_label }}');
-                        const password = document.getElementById('{{ form.password.id_for_label }}');
-                        if (!username || !password) return;
-                        username.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                password.focus();
-                            }
-                        });
-                    })();
-                </script>
-                </div>
+        <div class="mb-4">
+            <label for="{{ form.password.id_for_label }}" class="form-label">Contraseña</label>
+            <div class="login-field">
+                <i class="fas fa-lock field-icon"></i>
+                {{ form.password }}
+                <button type="button" class="toggle-password" data-target="{{ form.password.id_for_label }}" aria-label="Mostrar contraseña">
+                    <i class="fas fa-eye"></i>
+                </button>
             </div>
-        </section>
-    </div>
-</body>
-</html>
+            {% if form.password.errors %}
+                <div class="text-danger small mt-1">{{ form.password.errors|join:" " }}</div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">
+            <i class="fas fa-sign-in-alt me-1"></i> Ingresar
+        </button>
+
+        <input type="hidden" name="next" value="{{ next }}">
+    </form>
+
+    <a href="{% url 'login_modify:recuperar_solicitar' %}" class="aux-link">
+        ¿Olvidaste tu contraseña?
+    </a>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelectorAll('.toggle-password').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = document.getElementById(btn.dataset.target);
+            if (!target) return;
+            const isPassword = target.type === 'password';
+            target.type = isPassword ? 'text' : 'password';
+            btn.querySelector('i').className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
+        });
+    });
+
+    (function () {
+        const username = document.getElementById('{{ form.username.id_for_label }}');
+        const password = document.getElementById('{{ form.password.id_for_label }}');
+        if (!username || !password) return;
+        username.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                password.focus();
+            }
+        });
+    })();
+</script>
+{% endblock %}
