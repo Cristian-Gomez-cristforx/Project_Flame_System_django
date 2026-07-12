@@ -45,6 +45,7 @@ def _logo_marca_agua():
 
 
 def _rango_desde_request(request):
+    """Extrae desde/hasta de la request o devuelve el rango por defecto (últimos 7 días)."""
     form = RangoFechasForm(request.GET or None)
     if request.GET and form.is_valid():
         return form.cleaned_data['desde'], form.cleaned_data['hasta'], form
@@ -57,6 +58,7 @@ def _rango_desde_request(request):
 
 @admin_requerido
 def dashboard(request):
+    """Dashboard general: ventas, mermas, estado de inventario y top productos del rango."""
     desde, hasta, form = _rango_desde_request(request)
 
     ventas = services.resumen_ventas(desde, hasta)
@@ -75,6 +77,7 @@ def dashboard(request):
 
 @admin_requerido
 def ventas(request):
+    """Reporte detallado de ventas: resumen, top productos, top bebidas y pedidos del rango."""
     desde, hasta, form = _rango_desde_request(request)
 
     resumen = services.resumen_ventas(desde, hasta)
@@ -93,6 +96,7 @@ def ventas(request):
 
 @admin_requerido
 def mermas(request):
+    """Reporte de mermas del rango: totales, desglose por motivo y por insumo."""
     desde, hasta, form = _rango_desde_request(request)
     resumen = services.resumen_mermas(desde, hasta)
 
@@ -104,6 +108,7 @@ def mermas(request):
 
 @admin_requerido
 def inventario(request):
+    """Estado actual del inventario: insumos ok, con stock bajo y sin turno activo."""
     estado = services.estado_inventario()
     return render(request, 'reportes/inventario.html', {'estado': estado})
 
@@ -113,16 +118,19 @@ MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
 
 
 def _fecha_larga(d):
+    """Convierte una fecha a texto largo en español (ej: '12 de julio 2026')."""
     return f'{d.day} de {MESES_ES[d.month - 1]} {d.year}'
 
 
 def _fmt_moneda(valor):
+    """Formatea un número como moneda con separador de miles en pesos colombianos."""
     entero = int(valor or 0)
     return f'${entero:,.0f}'.replace(',', '.')
 
 
 @admin_requerido
 def descargar_reporte_pedidos(request):
+    """Genera un PDF A4 con el listado completo de pedidos del rango y lo devuelve como descarga."""
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT
     from reportlab.lib.pagesizes import A4
@@ -401,6 +409,7 @@ def descargar_reporte_pedidos(request):
 
 
 def services_totales_pedido(pedido):
+    """Calcula el total y las unidades vendidas de un solo pedido (helper puntual)."""
     total = Decimal('0')
     unidades = 0
     for d in pedido.productos.all():

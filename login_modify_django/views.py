@@ -35,19 +35,23 @@ User = get_user_model()
 
 
 class FlameLoginView(LoginView):
+    """Vista de inicio de sesión que usa el formulario propio y redirige al dashboard."""
     template_name = 'auth/login.html'
     authentication_form = LoginForm
     redirect_authenticated_user = True
 
     def get_success_url(self):
+        """URL a la que se redirige tras un login exitoso."""
         return reverse_lazy('login_modify:dashboard')
 
     def form_invalid(self, form):
+        """Muestra un mensaje genérico si las credenciales no son válidas."""
         messages.error(self.request, 'Usuario o contraseña incorrectos.')
         return super().form_invalid(form)
 
 
 def logout_view(request):
+    """Cierra la sesión activa y regresa al login."""
     django_logout(request)
     messages.info(request, 'Sesión cerrada.')
     return redirect('login_modify:login')
@@ -55,6 +59,7 @@ def logout_view(request):
 
 @login_required(login_url='login_modify:login')
 def dashboard(request):
+    """Panel principal: arma los KPIs, últimos pedidos y alertas según el rol del usuario."""
     perfil = getattr(request.user, 'perfil', None)
 
     if perfil and not perfil.activo and not request.user.is_superuser:
@@ -110,8 +115,9 @@ def dashboard(request):
         }
         ultimos_pedidos = (
             Pedido.objects
+            .filter(estado=Pedido.EstadoPedido.FINALIZADO)
             .select_related('mesa', 'mesero')
-            .order_by('-fecha_creacion')[:6]
+            .order_by('-fecha_actualizacion')[:6]
         )
         alertas_stock = estado_inv['stock_bajo'][:5]
 
@@ -133,9 +139,9 @@ def dashboard(request):
         }
         ultimos_pedidos = (
             Pedido.objects
-            .filter(mesero=request.user)
+            .filter(mesero=request.user, estado=Pedido.EstadoPedido.FINALIZADO)
             .select_related('mesa')
-            .order_by('-fecha_creacion')[:6]
+            .order_by('-fecha_actualizacion')[:6]
         )
 
     elif es_cocinero:
@@ -167,6 +173,7 @@ def dashboard(request):
 
 
 def _buscar_usuario(identificador):
+    """Busca un usuario por username o email (comparación insensible a mayúsculas)."""
     return (
         User.objects
         .filter(Q(username__iexact=identificador) | Q(email__iexact=identificador))
@@ -175,6 +182,7 @@ def _buscar_usuario(identificador):
 
 
 def _enviar_pin_email(usuario, pin):
+    """Envía el correo con el PIN de recuperación (HTML + texto plano)."""
     asunto = 'Flame System · Código para recuperar tu contraseña'
     nombre = usuario.get_full_name() or usuario.get_username()
     contexto = {
@@ -199,6 +207,7 @@ def _enviar_pin_email(usuario, pin):
 
 
 def recuperar_solicitar(request):
+    """Paso 1 de recuperación: recibe usuario/correo, genera PIN y lo envía por email."""
     if request.user.is_authenticated:
         return redirect('login_modify:dashboard')
 
@@ -232,6 +241,7 @@ def recuperar_solicitar(request):
 
 
 def recuperar_verificar(request):
+    """Paso 2 de recuperación: valida el PIN y emite un token firmado para el paso 3."""
     if request.user.is_authenticated:
         return redirect('login_modify:dashboard')
 
@@ -268,6 +278,7 @@ def recuperar_verificar(request):
 
 
 def recuperar_cambiar(request):
+    """Paso 3 de recuperación: valida el token firmado y aplica la nueva contraseña."""
     if request.user.is_authenticated:
         return redirect('login_modify:dashboard')
 
@@ -309,6 +320,7 @@ def recuperar_cambiar(request):
 
 @admin_requerido
 def usuarios_lista(request):
+    """Lista de usuarios con filtro por texto libre y por rol (solo administradores)."""
     q = (request.GET.get('q') or '').strip()
     rol = (request.GET.get('rol') or '').strip()
 
@@ -340,6 +352,7 @@ def usuarios_lista(request):
 
 @admin_requerido
 def usuario_crear(request):
+    """Formulario de alta de un nuevo usuario (con su Perfil asociado)."""
     if request.method == 'POST':
         form = UsuarioCreateForm(request.POST)
         if form.is_valid():
@@ -357,6 +370,7 @@ def usuario_crear(request):
 
 @admin_requerido
 def usuario_editar(request, user_id):
+    """Edita datos personales, rol y estado de un usuario existente."""
     usuario = get_object_or_404(
         User.objects.select_related('perfil').exclude(is_superuser=True),
         pk=user_id,
@@ -380,6 +394,7 @@ def usuario_editar(request, user_id):
 @admin_requerido
 @require_POST
 def usuario_toggle_activo(request, user_id):
+    """Invierte el estado activo/inactivo del usuario indicado."""
     usuario = get_object_or_404(
         User.objects.select_related('perfil').exclude(is_superuser=True),
         pk=user_id,

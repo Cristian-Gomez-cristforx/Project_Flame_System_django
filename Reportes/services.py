@@ -21,11 +21,13 @@ ESTADOS_INGRESO = [
 
 
 def rango_por_defecto():
+    """Rango por defecto para los reportes: los últimos 7 días (hoy incluido)."""
     hoy = timezone.localdate()
     return hoy - timedelta(days=6), hoy
 
 
 def _limites(desde: date, hasta: date):
+    """Convierte un rango de fechas en datetimes con timezone (inicio y fin del día)."""
     tz = timezone.get_current_timezone()
     inicio = timezone.make_aware(datetime.combine(desde, time.min), tz)
     fin = timezone.make_aware(datetime.combine(hasta, time.max), tz)
@@ -33,6 +35,7 @@ def _limites(desde: date, hasta: date):
 
 
 def resumen_ventas(desde: date, hasta: date) -> dict:
+    """Agrega ventas del rango: totales, cantidades, ticket promedio y desglose producto/bebida."""
     inicio, fin = _limites(desde, hasta)
     pedidos = Pedido.objects.filter(
         fecha_creacion__range=(inicio, fin),
@@ -66,6 +69,7 @@ def resumen_ventas(desde: date, hasta: date) -> dict:
 
 
 def top_productos(desde: date, hasta: date, limite: int = 10):
+    """Ranking de productos más vendidos en el rango (por unidades)."""
     inicio, fin = _limites(desde, hasta)
     return (
         DetallePedidoProducto.objects
@@ -83,6 +87,7 @@ def top_productos(desde: date, hasta: date, limite: int = 10):
 
 
 def top_bebidas(desde: date, hasta: date, limite: int = 10):
+    """Ranking de bebidas más vendidas en el rango (por unidades)."""
     inicio, fin = _limites(desde, hasta)
     return (
         DetallePedidoBebida.objects
@@ -100,6 +105,7 @@ def top_bebidas(desde: date, hasta: date, limite: int = 10):
 
 
 def pedidos_por_dia(desde: date, hasta: date):
+    """Devuelve los pedidos pagados/finalizados del rango, ordenados por fecha descendente."""
     inicio, fin = _limites(desde, hasta)
     pedidos = (
         Pedido.objects
@@ -110,6 +116,7 @@ def pedidos_por_dia(desde: date, hasta: date):
 
 
 def resumen_mermas(desde: date, hasta: date) -> dict:
+    """Agrega mermas del rango: total, costo, desglose por motivo y por insumo."""
     inicio, fin = _limites(desde, hasta)
     mermas = Merma.objects.filter(fecha_merma__range=(inicio, fin))
 
@@ -143,6 +150,7 @@ def resumen_mermas(desde: date, hasta: date) -> dict:
 
 
 def estado_inventario():
+    """Clasifica los insumos según su estado: en stock ok, stock bajo o sin turno abierto."""
     insumos = list(Insumo.objects.select_related('categoria').order_by('nombre_insumo'))
     stock_bajo = [i for i in insumos if i.stock_maximo > 0 and i.bajo_stock_30]
     sin_turno = [i for i in insumos if i.stock_maximo == 0]

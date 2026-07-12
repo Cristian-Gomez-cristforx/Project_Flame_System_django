@@ -23,6 +23,7 @@ from .models import Bebida, Categoria, Insumo, Merma, Producto, RecetaProducto
 
 @admin_requerido
 def inventario(request):
+    """Pantalla de bienvenida del módulo de inventario con los accesos a cada submódulo."""
     return render(request, 'temp_inventario/inventario.html')
 
 
@@ -40,6 +41,7 @@ def _contexto_orden_id(request):
 # ====================== INSUMOS ======================
 @admin_requerido
 def listar_insumos(request):
+    """Listado de insumos con filtros por nombre/ID, unidad y categoría."""
     insumos = Insumo.objects.select_related('categoria').order_by('nombre_insumo')
     q = request.GET.get('q', '').strip()
     unidad = request.GET.get('unidad', '').strip()
@@ -73,6 +75,7 @@ def listar_insumos(request):
 
 @admin_requerido
 def crear_insumo(request):
+    """Alta de un nuevo insumo con su unidad, precio y categoría."""
     form = InsumoForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         insumo = form.save()
@@ -88,6 +91,7 @@ def crear_insumo(request):
 
 @admin_requerido
 def editar_insumo(request, id):
+    """Edita los datos maestros de un insumo (no toca stock, eso se hace por otra vista)."""
     insumo_obj = get_object_or_404(Insumo, id_insumo=id)
     form = InsumoForm(request.POST or None, instance=insumo_obj)
 
@@ -107,6 +111,7 @@ def editar_insumo(request, id):
 # ====================== PRODUCTOS ======================
 @admin_requerido
 def listar_productos(request):
+    """Listado de productos con receta anexada y cálculo de unidades preparables."""
     productos = Producto.objects.all().order_by('nombre_producto')
     q = request.GET.get('q', '').strip()
     if q:
@@ -154,6 +159,7 @@ def listar_productos(request):
 
 @admin_requerido
 def crear_producto(request):
+    """Crea producto + receta (insumos requeridos) dentro de una misma transacción."""
     form = ProductoForm(request.POST or None)
     formset = DetalleRecetaFormSet(request.POST or None, prefix='detalles')
 
@@ -179,6 +185,7 @@ def crear_producto(request):
 
 @admin_requerido
 def editar_producto(request, id):
+    """Edita producto y su receta (crea la receta si aún no existía)."""
     producto_obj = get_object_or_404(Producto, id_producto=id)
     receta_obj, _ = RecetaProducto.objects.get_or_create(
         producto=producto_obj,
@@ -210,6 +217,7 @@ def editar_producto(request, id):
 # ====================== BEBIDAS ======================
 @admin_requerido
 def listar_bebidas(request):
+    """Listado de bebidas con filtros por nombre/ID, tamaño y categoría."""
     bebidas = Bebida.objects.select_related('categoria').order_by('nombre_bebida')
     q = request.GET.get('q', '').strip()
     tamaño = request.GET.get('tamaño', '').strip()
@@ -244,6 +252,7 @@ def listar_bebidas(request):
 
 @admin_requerido
 def crear_bebida(request):
+    """Alta de una nueva bebida con tamaño, precios y categoría."""
     form = BebidaForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         bebida = form.save()
@@ -259,6 +268,7 @@ def crear_bebida(request):
 
 @admin_requerido
 def editar_bebida(request, id):
+    """Edita los datos maestros de una bebida existente."""
     bebida_obj = get_object_or_404(Bebida, id_bebida=id)
     form = BebidaForm(request.POST or None, instance=bebida_obj)
 
@@ -278,6 +288,7 @@ def editar_bebida(request, id):
 # ====================== MERMAS ======================
 @admin_requerido
 def listar_mermas(request):
+    """Listado de mermas registradas, ordenadas por fecha o ID."""
     mermas = Merma.objects.all().order_by('-fecha_merma')
     orden = request.GET.get('orden', '')
     if orden == 'asc':
@@ -292,6 +303,7 @@ def listar_mermas(request):
 
 @admin_requerido
 def crear_merma(request):
+    """Registra una merma de insumo (descuenta stock automáticamente vía el modelo)."""
     form = MermaForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         merma = form.save()
@@ -313,6 +325,7 @@ def crear_merma(request):
 # ====================== AGREGAR STOCK ======================
 @admin_requerido
 def agregar_stock_insumo(request, id):
+    """Suma stock a un insumo existente (reposición de inventario)."""
     insumo_obj = get_object_or_404(Insumo, id_insumo=id)
     form = InsumoAgregarStockForm(request.POST or None, instance=insumo_obj)
 
@@ -334,6 +347,7 @@ def agregar_stock_insumo(request, id):
 @admin_requerido
 @require_POST
 def abrir_turno(request):
+    """Abre turno para los insumos seleccionados (fija stock_maximo como referencia)."""
     ids = request.POST.getlist('insumos')
     if not ids:
         messages.warning(request, 'Selecciona al menos un insumo.')
@@ -349,6 +363,7 @@ def abrir_turno(request):
 @admin_requerido
 @require_POST
 def cerrar_turno(request):
+    """Cierra turno para los insumos seleccionados (limpia stock_maximo)."""
     ids = request.POST.getlist('insumos')
     if not ids:
         messages.warning(request, 'Selecciona al menos un insumo.')
@@ -362,6 +377,7 @@ def cerrar_turno(request):
 # ====================== CATEGORÍAS ======================
 @admin_requerido
 def listar_categorias(request):
+    """Listado de categorías (insumos, productos, bebidas) con filtro por tipo."""
     tipo = request.GET.get('tipo', '').strip()
     categorias = Categoria.objects.all().order_by('tipo', 'nombre_categoria')
     if tipo:
@@ -383,6 +399,7 @@ def listar_categorias(request):
 
 @admin_requerido
 def crear_categoria(request):
+    """Alta de una categoría con su tipo (insumo, producto o bebida)."""
     form = CategoriaForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         try:
@@ -398,6 +415,7 @@ def crear_categoria(request):
 @admin_requerido
 @require_POST
 def editar_categoria(request, id):
+    """Renombra una categoría vía POST normal o AJAX (responde JSON si es XHR)."""
     categoria = get_object_or_404(Categoria, pk=id)
     nombre = ' '.join((request.POST.get('nombre_categoria') or '').split())
 
@@ -428,6 +446,7 @@ def editar_categoria(request, id):
 @admin_requerido
 @require_POST
 def eliminar_categoria(request, id):
+    """Elimina una categoría solo si no está siendo usada por ningún ítem."""
     categoria = get_object_or_404(Categoria, pk=id)
     total_uso = (
         categoria.insumos.count() +

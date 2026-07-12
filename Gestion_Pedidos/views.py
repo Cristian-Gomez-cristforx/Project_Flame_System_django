@@ -34,6 +34,7 @@ ROLES_TODOS = (Perfil.Rol.ADMIN, Perfil.Rol.MESERO, Perfil.Rol.COCINERO)
 
 @rol_requerido(*ROLES_PEDIDOS)
 def lista_pedidos(request):
+    """Listado de pedidos con filtros por estado, tipo y búsqueda libre (últimos 100)."""
     filtro = FiltroPedidosForm(request.GET or None)
     pedidos = Pedido.objects.select_related('mesa', 'mesero').order_by('-fecha_creacion')
 
@@ -61,6 +62,7 @@ def lista_pedidos(request):
 
 @rol_requerido(*ROLES_PEDIDOS)
 def crear_pedido(request):
+    """Alta de un pedido nuevo; si se indicó nueva mesa la crea antes de asociarla."""
     if request.method == 'POST':
         form = PedidoCrearForm(request.POST)
         if form.is_valid():
@@ -93,6 +95,7 @@ def crear_pedido(request):
 
 
 def _render_detalle(request, pedido, *, form_producto=None, form_bebida=None, error_accion=None, error_items=None):
+    """Helper que renderiza la vista de detalle con todos sus formularios y totales."""
     totales = services.calcular_totales(pedido)
     return render(request, 'pedidos/detalle.html', {
         'pedido': pedido,
@@ -112,6 +115,7 @@ def _render_detalle(request, pedido, *, form_producto=None, form_bebida=None, er
 
 
 def _get_pedido_detalle(pedido_id):
+    """Obtiene un pedido con sus relaciones precargadas (mesa, mesero, líneas)."""
     return get_object_or_404(
         Pedido.objects.select_related('mesa', 'mesero').prefetch_related('productos__producto', 'bebidas__bebida'),
         pk=pedido_id,
@@ -120,6 +124,7 @@ def _get_pedido_detalle(pedido_id):
 
 @rol_requerido(*ROLES_PEDIDOS)
 def detalle_pedido(request, pedido_id):
+    """Vista de detalle de un pedido con sus líneas, totales y acciones disponibles."""
     pedido = _get_pedido_detalle(pedido_id)
     return _render_detalle(request, pedido)
 
@@ -127,6 +132,7 @@ def detalle_pedido(request, pedido_id):
 @rol_requerido(*ROLES_PEDIDOS)
 @require_POST
 def agregar_producto(request, pedido_id):
+    """Añade una línea de producto al pedido; delega en services.agregar_producto."""
     pedido = _get_pedido_detalle(pedido_id)
     form = AgregarProductoForm(request.POST, pedido=pedido)
     if form.is_valid():
@@ -146,6 +152,7 @@ def agregar_producto(request, pedido_id):
 @rol_requerido(*ROLES_PEDIDOS)
 @require_POST
 def agregar_bebida(request, pedido_id):
+    """Añade una línea de bebida al pedido; delega en services.agregar_bebida."""
     pedido = _get_pedido_detalle(pedido_id)
     form = AgregarBebidaForm(request.POST, pedido=pedido)
     if form.is_valid():
@@ -165,6 +172,7 @@ def agregar_bebida(request, pedido_id):
 @rol_requerido(*ROLES_PEDIDOS)
 @require_POST
 def eliminar_item(request, pedido_id, tipo_item, item_id):
+    """Elimina una línea (producto o bebida) del pedido pendiente."""
     pedido = get_object_or_404(Pedido, pk=pedido_id)
     try:
         services.eliminar_item(pedido, tipo_item, item_id)
@@ -177,6 +185,7 @@ def eliminar_item(request, pedido_id, tipo_item, item_id):
 @rol_requerido(*ROLES_TODOS)
 @require_POST
 def cambiar_estado(request, pedido_id):
+    """Solicita la transición de estado del pedido; muestra faltantes si el stock no alcanza."""
     pedido = get_object_or_404(Pedido, pk=pedido_id)
     nuevo = request.POST.get('estado')
     next_url = request.POST.get('next')
@@ -200,6 +209,7 @@ def cambiar_estado(request, pedido_id):
 @rol_requerido(*ROLES_PEDIDOS)
 @require_POST
 def cambiar_mesa(request, pedido_id):
+    """Reasigna la mesa de un pedido (permite crear una mesa nueva sobre la marcha)."""
     pedido = get_object_or_404(Pedido, pk=pedido_id)
 
     if pedido.tipo != Pedido.TipoPedido.MESA:
@@ -255,6 +265,7 @@ def cambiar_mesa(request, pedido_id):
 
 @rol_requerido(*ROLES_PEDIDOS)
 def cobrar_pedido(request, pedido_id):
+    """Formulario de cobro: recoge el tipo de pago y marca el pedido como pagado."""
     pedido = get_object_or_404(Pedido, pk=pedido_id)
     totales = services.calcular_totales(pedido)
 
@@ -279,6 +290,7 @@ def cobrar_pedido(request, pedido_id):
 
 @rol_requerido(*ROLES_PEDIDOS)
 def lista_mesas(request):
+    """Muestra el mapa de mesas indicando cuál tiene un pedido activo asociado."""
     perfil = getattr(request.user, 'perfil', None)
     es_admin = request.user.is_superuser or (perfil and perfil.es_admin)
 
@@ -309,6 +321,7 @@ def lista_mesas(request):
 
 @admin_requerido
 def mesa_crear(request):
+    """Alta de una nueva mesa."""
     form = MesaForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         mesa = form.save()
@@ -322,6 +335,7 @@ def mesa_crear(request):
 
 @admin_requerido
 def mesa_editar(request, mesa_id):
+    """Edita el número o el estado activo de una mesa existente."""
     mesa = get_object_or_404(Mesa, pk=mesa_id)
     if request.method == 'POST':
         form = MesaForm(request.POST, instance=mesa)
@@ -343,6 +357,7 @@ def mesa_editar(request, mesa_id):
 @admin_requerido
 @require_POST
 def mesa_eliminar(request, mesa_id):
+    """Elimina una mesa si no tiene pedidos asociados y no está ocupada."""
     mesa = get_object_or_404(Mesa, pk=mesa_id)
     total_pedidos = mesa.pedidos.count()
     if total_pedidos > 0:
@@ -364,6 +379,7 @@ def mesa_eliminar(request, mesa_id):
 
 
 def _fmt_moneda(valor):
+    """Formatea un número como moneda con separador de miles en pesos colombianos."""
     entero = int(valor or 0)
     return f'${entero:,.0f}'.replace(',', '.')
 
@@ -372,6 +388,7 @@ _FUENTES_FACTURA_REGISTRADAS = False
 
 
 def _registrar_fuentes_factura():
+    """Registra las fuentes TTF (con soporte de acentos y ñ) para el PDF de factura."""
     global _FUENTES_FACTURA_REGISTRADAS
     if _FUENTES_FACTURA_REGISTRADAS:
         return
@@ -403,10 +420,12 @@ def _registrar_fuentes_factura():
 
 
 def _f_base():
+    """Devuelve el nombre de la fuente base para el PDF (con fallback a Helvetica)."""
     return 'FacturaBase' if 'FacturaBase' in pdfmetrics.getRegisteredFontNames() else 'Helvetica'
 
 
 def _f_bold():
+    """Devuelve el nombre de la fuente en negrita para el PDF (con fallback razonable)."""
     if 'FacturaBold' in pdfmetrics.getRegisteredFontNames():
         return 'FacturaBold'
     if 'FacturaBase' in pdfmetrics.getRegisteredFontNames():
@@ -415,6 +434,7 @@ def _f_bold():
 
 
 def _truncar(texto, ancho_max_pt, fuente, size):
+    """Recorta un texto al ancho máximo indicado, agregando '…' al final si sobra."""
     if pdfmetrics.stringWidth(texto, fuente, size) <= ancho_max_pt:
         return texto
     while texto and pdfmetrics.stringWidth(texto + '…', fuente, size) > ancho_max_pt:
@@ -424,6 +444,7 @@ def _truncar(texto, ancho_max_pt, fuente, size):
 
 @rol_requerido(*ROLES_PEDIDOS)
 def factura_imagen(request, pedido_id):
+    """Genera el PDF tipo ticket (80mm) del pedido y lo devuelve como descarga."""
     pedido = _get_pedido_detalle(pedido_id)
 
     estados_permitidos = {
@@ -568,6 +589,7 @@ def factura_imagen(request, pedido_id):
 
 @rol_requerido(*ROLES_COCINA)
 def cocina(request):
+    """Tablero de cocina con los pedidos pendientes y en preparación."""
     pedidos = (
         Pedido.objects
         .filter(estado__in=[Pedido.EstadoPedido.PENDIENTE, Pedido.EstadoPedido.COCINA])

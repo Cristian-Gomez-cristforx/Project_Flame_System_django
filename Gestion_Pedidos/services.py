@@ -21,6 +21,7 @@ TRANSICIONES_VALIDAS = {
 
 
 def calcular_totales(pedido):
+    """Devuelve el subtotal de productos, subtotal de bebidas y total del pedido."""
     total_productos = sum(
         (d.subtotal for d in pedido.productos.all()),
         Decimal('0'),
@@ -37,6 +38,7 @@ def calcular_totales(pedido):
 
 
 def _copiar_receta_a_detalle(detalle_producto):
+    """Copia la receta del producto al detalle del pedido para congelar el consumo esperado."""
     try:
         receta = detalle_producto.producto.receta
     except RecetaProducto.DoesNotExist:
@@ -54,6 +56,7 @@ def _copiar_receta_a_detalle(detalle_producto):
 
 @transaction.atomic
 def agregar_producto(pedido, producto, cantidad):
+    """Agrega una línea de producto al pedido pendiente y copia su receta al detalle."""
     if pedido.estado not in {Pedido.EstadoPedido.PENDIENTE}:
         raise ValidationError('Solo se pueden agregar productos a pedidos pendientes.')
 
@@ -64,6 +67,7 @@ def agregar_producto(pedido, producto, cantidad):
 
 @transaction.atomic
 def agregar_bebida(pedido, bebida, cantidad):
+    """Agrega una línea de bebida al pedido pendiente."""
     if pedido.estado not in {Pedido.EstadoPedido.PENDIENTE}:
         raise ValidationError('Solo se pueden agregar bebidas a pedidos pendientes.')
 
@@ -71,6 +75,7 @@ def agregar_bebida(pedido, bebida, cantidad):
 
 
 def _consumo_por_insumo(pedido):
+    """Suma la cantidad de cada insumo que se consumirá al preparar el pedido."""
     consumo = defaultdict(lambda: Decimal('0'))
     detalles = (
         pedido.productos
@@ -88,6 +93,7 @@ def _consumo_por_insumo(pedido):
 
 
 def _consumo_por_bebida(pedido):
+    """Suma la cantidad de cada bebida que se descontará del stock."""
     consumo = defaultdict(int)
     for detalle_bebida in pedido.bebidas.all():
         consumo[detalle_bebida.bebida_id] += detalle_bebida.cantidad
@@ -95,6 +101,7 @@ def _consumo_por_bebida(pedido):
 
 
 def _fmt_cantidad(n):
+    """Formatea un número como entero si es exacto, o como decimal sin ceros sobrantes."""
     d = Decimal(n)
     if d == d.to_integral_value():
         return str(int(d))
@@ -102,6 +109,7 @@ def _fmt_cantidad(n):
 
 
 def _validar_stock_suficiente(pedido):
+    """Lanza ValidationError con la lista de faltantes si el stock actual no alcanza."""
     consumo_insumo = _consumo_por_insumo(pedido)
     consumo_bebida = _consumo_por_bebida(pedido)
 
@@ -131,6 +139,7 @@ def _validar_stock_suficiente(pedido):
 
 
 def _descontar_stock(pedido):
+    """Resta del inventario los insumos y bebidas consumidos por el pedido."""
     for insumo_id, cantidad in _consumo_por_insumo(pedido).items():
         Insumo.objects.filter(pk=insumo_id).update(
             cantidad_insumo=F('cantidad_insumo') - cantidad,
@@ -142,6 +151,7 @@ def _descontar_stock(pedido):
 
 
 def _restaurar_stock(pedido):
+    """Devuelve al inventario los insumos y bebidas de un pedido cancelado."""
     for insumo_id, cantidad in _consumo_por_insumo(pedido).items():
         Insumo.objects.filter(pk=insumo_id).update(
             cantidad_insumo=F('cantidad_insumo') + cantidad,
@@ -154,6 +164,7 @@ def _restaurar_stock(pedido):
 
 @transaction.atomic
 def cambiar_estado(pedido, nuevo_estado):
+    """Mueve el pedido al siguiente estado válido, aplicando descuentos/restauraciones de stock y liberación de mesa."""
     if nuevo_estado not in TRANSICIONES_VALIDAS.get(pedido.estado, set()):
         raise ValidationError(
             f'No se puede pasar de "{pedido.get_estado_display()}" a "{nuevo_estado}".'
@@ -193,6 +204,7 @@ def cambiar_estado(pedido, nuevo_estado):
 
 @transaction.atomic
 def registrar_pago(pedido, tipo_pago):
+    """Guarda el tipo de pago y cambia el estado del pedido a PAGADO."""
     pedido.tipo_pago = tipo_pago
     pedido.save(update_fields=['tipo_pago'])
     cambiar_estado(pedido, Pedido.EstadoPedido.PAGADO)
@@ -200,6 +212,7 @@ def registrar_pago(pedido, tipo_pago):
 
 @transaction.atomic
 def crear_pedido(mesero, datos_form):
+    """Crea un pedido nuevo, lo asocia al mesero y marca la mesa como ocupada si aplica."""
     pedido = Pedido(mesero=mesero, **datos_form)
     pedido.full_clean()
     pedido.save()
@@ -212,6 +225,7 @@ def crear_pedido(mesero, datos_form):
 
 
 def eliminar_item(pedido, tipo_item, item_id):
+    """Elimina una línea (producto o bebida) de un pedido en estado pendiente."""
     if pedido.estado != Pedido.EstadoPedido.PENDIENTE:
         raise ValidationError('Solo se pueden eliminar ítems de pedidos pendientes.')
 
