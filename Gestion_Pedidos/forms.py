@@ -223,7 +223,8 @@ class AgregarProductoForm(forms.Form):
                     posibles_min = posibles
             stock_por_producto[prod.pk] = max(0, posibles_min or 0)
 
-        self.fields['producto'].queryset = productos
+        con_stock = [pk for pk, stock in stock_por_producto.items() if stock > 0]
+        self.fields['producto'].queryset = productos.filter(pk__in=con_stock)
         self.fields['producto'].label_from_instance = (
             lambda obj: f'{obj.nombre_producto} | Stock: {stock_por_producto.get(obj.pk, 0)} | ${obj.precio_producto:,.0f}'.replace(',', '.')
         )
@@ -281,7 +282,8 @@ class AgregarBebidaForm(forms.Form):
             for b in bebidas
         }
 
-        self.fields['bebida'].queryset = bebidas
+        con_stock = [pk for pk, stock in stock_por_bebida.items() if stock > 0]
+        self.fields['bebida'].queryset = bebidas.filter(pk__in=con_stock)
         self.fields['bebida'].label_from_instance = (
             lambda obj: f'{obj.nombre_bebida} ({obj.tamaño_bebida}) | Stock: {stock_por_bebida.get(obj.pk, 0)} | ${obj.precio_venta:,.0f}'.replace(',', '.')
         )
