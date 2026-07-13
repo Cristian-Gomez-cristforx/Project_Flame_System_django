@@ -58,6 +58,17 @@ def crear_perfil_para_usuario(sender, instance, created, **kwargs):
         Perfil.objects.create(usuario=instance, rol=rol)
 
 
+@receiver(post_save, sender=Perfil)
+def sincronizar_grupo_al_guardar_perfil(sender, instance, **kwargs):
+    """Refleja el rol del Perfil como pertenencia a un grupo de Django."""
+    from .permisos import sincronizar_grupo_usuario
+    try:
+        sincronizar_grupo_usuario(instance.usuario, instance.rol)
+    except Exception:
+        # Silencioso durante migraciones iniciales cuando aún no existen todas las tablas.
+        pass
+
+
 class RecuperacionContrasena(models.Model):
     PIN_VIGENCIA_MIN = 15
     MAX_INTENTOS = 5

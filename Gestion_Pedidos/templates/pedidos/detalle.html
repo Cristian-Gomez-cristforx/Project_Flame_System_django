@@ -63,6 +63,14 @@
                     <div class="fw-semibold">{{ pedido.direccion_pedi }}</div>
                 </div>
             {% endif %}
+            {% if pedido.tipo == 'Recoger' and pedido.minutos_recogida %}
+                <div class="col-sm-6 col-md-4">
+                    <div class="text-muted-sm">Tiempo de recogida</div>
+                    <div class="fw-semibold">
+                        <i class="fas fa-clock me-1"></i> {{ pedido.minutos_recogida }} min
+                    </div>
+                </div>
+            {% endif %}
             <div class="col-sm-6 col-md-4">
                 <div class="text-muted-sm">Mesero</div>
                 <div class="fw-semibold">{{ pedido.mesero.get_username }}</div>
@@ -115,6 +123,13 @@
                                 <td class="text-end"><strong>${{ d.subtotal|floatformat:0 }}</strong></td>
                                 <td class="text-end">
                                     {% if pedido.estado == estados.PENDIENTE %}
+                                        {% if d.insumos.all %}
+                                            <button type="button" class="btn btn-sm btn-outline-primary me-1"
+                                                    title="Modificar receta"
+                                                    data-bs-toggle="modal" data-bs-target="#recetaModal-{{ d.id }}">
+                                                <i class="fas fa-list-check"></i>
+                                            </button>
+                                        {% endif %}
                                         <form method="post" action="{% url 'pedidos:eliminar_item' pedido.id_pedido 'producto' d.id %}" class="d-inline">
                                             {% csrf_token %}
                                             <button class="btn btn-sm btn-outline-danger" title="Eliminar">
@@ -324,6 +339,58 @@
         </div>
     </div>
 </div>
+
+{% if pedido.estado == estados.PENDIENTE %}
+    {% for d in pedido.productos.all %}
+        {% if d.insumos.all %}
+            <div class="modal fade" id="recetaModal-{{ d.id }}" tabindex="-1"
+                 aria-labelledby="recetaModalLabel-{{ d.id }}" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <form method="post" action="{% url 'pedidos:editar_receta_detalle' pedido.id_pedido d.id %}">
+                            {% csrf_token %}
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="recetaModalLabel-{{ d.id }}">
+                                    <i class="fas fa-list-check me-2"></i>Receta · {{ d.producto.nombre_producto }}
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="text-muted-sm mb-3">
+                                    Marca los insumos que se usarán en esta línea. Los desmarcados no se descontarán del stock.
+                                </p>
+                                <ul class="list-group">
+                                    {% for ins in d.insumos.all %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div class="form-check mb-0">
+                                                <input class="form-check-input" type="checkbox"
+                                                       name="insumo" value="{{ ins.pk }}"
+                                                       id="receta-{{ d.id }}-{{ ins.pk }}"
+                                                       {% if ins.usar %}checked{% endif %}>
+                                                <label class="form-check-label" for="receta-{{ d.id }}-{{ ins.pk }}">
+                                                    {{ ins.insumo.nombre_insumo }}
+                                                </label>
+                                            </div>
+                                            <span class="text-muted-sm">
+                                                {{ ins.cantidad_requerida|floatformat:"-2" }}{{ ins.insumo.unidad_medida }}
+                                            </span>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i> Guardar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% endfor %}
+{% endif %}
 
 {% if puede_cambiar_mesa %}
 <div class="modal fade" id="cambiarMesaModal" tabindex="-1" aria-labelledby="cambiarMesaModalLabel" aria-hidden="true">

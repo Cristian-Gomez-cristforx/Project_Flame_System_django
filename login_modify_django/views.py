@@ -1,3 +1,4 @@
+from datetime import datetime, time
 from decimal import Decimal
 
 from django.conf import settings
@@ -74,8 +75,22 @@ def dashboard(request):
 
     from Gestion_Pedidos.models import Mesa, Pedido
     from Reportes import services as reportes_services
+    from Reportes.forms import RangoFechasForm
 
     hoy = timezone.localdate()
+
+    form_fechas = RangoFechasForm(request.GET or None)
+    if request.GET and form_fechas.is_valid():
+        desde = form_fechas.cleaned_data['desde']
+        hasta = form_fechas.cleaned_data['hasta']
+    else:
+        desde = hoy
+        hasta = hoy
+        form_fechas = RangoFechasForm(initial={'desde': desde, 'hasta': hasta})
+
+    tz = timezone.get_current_timezone()
+    rango_inicio = timezone.make_aware(datetime.combine(desde, time.min), tz)
+    rango_fin = timezone.make_aware(datetime.combine(hasta, time.max), tz)
 
     estados_activos = [
         Pedido.EstadoPedido.PENDIENTE,
@@ -89,15 +104,19 @@ def dashboard(request):
     alertas_stock = []
 
     if es_admin:
-        from Gestion_Pedidos.models import DetallePedidoBebida, DetallePedidoProducto
+        from django.db.models import F
+        from Gestion_Pedidos.models import (
+            DetallePedidoBebida,
+            DetallePedidoInsumo,
+            DetallePedidoProducto,
+        )
 
-        estado_inv = reportes_services.estado_inventario()
         mesas_total = Mesa.objects.filter(activa=True).count()
         mesas_ocupadas = Mesa.objects.filter(activa=True, ocupada=True).count()
 
         finalizados_hoy = Pedido.objects.filter(
             estado=Pedido.EstadoPedido.FINALIZADO,
-            fecha_actualizacion__date=hoy,
+            fecha_actualizacion__range=(rango_inicio, rango_fin),
         )
         total_productos = DetallePedidoProducto.objects.filter(
             pedido__in=finalizados_hoy
@@ -106,20 +125,53 @@ def dashboard(request):
             pedido__in=finalizados_hoy
         ).aggregate(total=Coalesce(Sum('subtotal'), Value(Decimal('0')), output_field=DecimalField()))['total']
 
+        costo_insumos_productos = DetallePedidoInsumo.objects.filter(
+            detalle_producto__pedido__in=finalizados_hoy,
+            usar=True,
+        ).aggregate(
+            total=Coalesce(
+                Sum(F('cantidad_requerida') * F('precio_insumo') * F('detalle_producto__cantidad')),
+                Value(Decimal('0')),
+                output_field=DecimalField(),
+            )
+        )['total']
+        from Inventario.models import Bebida
+        costo_bebidas = Bebida.objects.aggregate(
+            total=Coalesce(
+                Sum(F('precio_compra') * F('stock_maximo')),
+                Value(Decimal('0')),
+                output_field=DecimalField(),
+            )
+        )['total']
+
+        ingresos = total_productos + total_bebidas
+        ganancia = ingresos - (costo_insumos_productos + costo_bebidas)
+
         kpis = {
-            'ventas_hoy': total_productos + total_bebidas,
+            'ventas_hoy': ingresos,
             'pedidos_hoy': finalizados_hoy.count(),
             'mesas_ocupadas': mesas_ocupadas,
             'mesas_total': mesas_total,
-            'stock_bajo_count': len(estado_inv['stock_bajo']),
+            'ingresos': ingresos,
+            'inversion_insumos': costo_insumos_productos,
+            'inversion_bebidas': costo_bebidas,
+            'ganancia': ganancia,
         }
-        ultimos_pedidos = (
+        ultimos_pedidos = list(
             Pedido.objects
-            .filter(estado=Pedido.EstadoPedido.FINALIZADO)
+            .filter(
+                estado=Pedido.EstadoPedido.FINALIZADO,
+                fecha_actualizacion__range=(rango_inicio, rango_fin),
+            )
             .select_related('mesa', 'mesero')
+            .prefetch_related('productos', 'bebidas')
             .order_by('-fecha_actualizacion')[:6]
         )
-        alertas_stock = estado_inv['stock_bajo'][:5]
+        for p in ultimos_pedidos:
+            p.total = (
+                sum((d.subtotal for d in p.productos.all()), Decimal('0'))
+                + sum((d.subtotal for d in p.bebidas.all()), Decimal('0'))
+            )
 
     elif es_mesero:
         mesas_total = Mesa.objects.filter(activa=True).count()
@@ -128,7 +180,8 @@ def dashboard(request):
             mesero=request.user, estado__in=estados_activos
         ).count()
         pedidos_hoy = Pedido.objects.filter(
-            mesero=request.user, fecha_creacion__date=hoy
+            mesero=request.user,
+            fecha_creacion__range=(rango_inicio, rango_fin),
         ).count()
 
         kpis = {
@@ -137,12 +190,22 @@ def dashboard(request):
             'mesas_total': mesas_total,
             'pedidos_hoy': pedidos_hoy,
         }
-        ultimos_pedidos = (
+        ultimos_pedidos = list(
             Pedido.objects
-            .filter(mesero=request.user, estado=Pedido.EstadoPedido.FINALIZADO)
+            .filter(
+                mesero=request.user,
+                estado=Pedido.EstadoPedido.FINALIZADO,
+                fecha_actualizacion__range=(rango_inicio, rango_fin),
+            )
             .select_related('mesa')
+            .prefetch_related('productos', 'bebidas')
             .order_by('-fecha_actualizacion')[:6]
         )
+        for p in ultimos_pedidos:
+            p.total = (
+                sum((d.subtotal for d in p.productos.all()), Decimal('0'))
+                + sum((d.subtotal for d in p.bebidas.all()), Decimal('0'))
+            )
 
     elif es_cocinero:
         pendientes = Pedido.objects.filter(estado=Pedido.EstadoPedido.PENDIENTE).count()
@@ -168,6 +231,9 @@ def dashboard(request):
         'kpis': kpis,
         'ultimos_pedidos': ultimos_pedidos,
         'alertas_stock': alertas_stock,
+        'form_fechas': form_fechas,
+        'desde': desde,
+        'hasta': hasta,
     }
     return render(request, 'auth/dashboard.html', context)
 
@@ -301,10 +367,10 @@ def recuperar_cambiar(request):
         request.session.pop('recup_token', None)
         return redirect('login_modify:recuperar_solicitar')
 
+    usuario = User.objects.get(pk=recup.usuario_id)
     if request.method == 'POST':
-        form = NuevaContrasenaForm(request.POST)
+        form = NuevaContrasenaForm(request.POST, usuario=usuario)
         if form.is_valid():
-            usuario = User.objects.get(pk=recup.usuario_id)
             usuario.set_password(form.cleaned_data['password1'])
             usuario.save()
             recup.usado = True
@@ -313,7 +379,7 @@ def recuperar_cambiar(request):
             messages.success(request, 'Contraseña actualizada. Inicia sesión con tu nueva contraseña.')
             return redirect('login_modify:login')
     else:
-        form = NuevaContrasenaForm()
+        form = NuevaContrasenaForm(usuario=usuario)
 
     return render(request, 'auth/recuperar_cambiar.html', {'form': form})
 

@@ -6,23 +6,21 @@
 
 {% block extra_css %}
 <style>
-    .welcome-card {
-        background: linear-gradient(135deg, var(--flame-primary) 0%, var(--flame-accent) 100%);
-        color: #fff;
-        border-radius: 14px;
-        padding: 1.75rem 2rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 10px 30px rgba(217, 72, 15, 0.25);
+    .filtro-fechas-card {
+        background: #fff;
+        border: 1px solid var(--flame-border);
+        border-radius: 12px;
+        padding: 0.85rem 1rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
-    .welcome-card h1 { margin: 0; font-size: 1.75rem; font-weight: 700; }
-    .welcome-card p { margin: 0.25rem 0 0; opacity: 0.9; }
-    .welcome-card .rol-badge {
-        background: rgba(255,255,255,0.2);
-        border-radius: 999px;
-        padding: 0.25rem 0.75rem;
-        font-size: 0.85rem;
-        display: inline-block;
-        margin-top: 0.5rem;
+    .filtro-fechas-card label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--flame-muted);
+        font-weight: 600;
+        margin-bottom: 0.15rem;
     }
 
     .kpi-card {
@@ -59,6 +57,8 @@
     .kpi-card.success .kpi-icon { color: #2f9e44; }
     .kpi-card.warning { border-left-color: #f08c00; }
     .kpi-card.warning .kpi-icon { color: #f08c00; }
+    .kpi-card.info { border-left-color: #1971c2; }
+    .kpi-card.info .kpi-icon { color: #1971c2; }
     .kpi-card.danger { border-left-color: #e03131; }
     .kpi-card.danger .kpi-icon { color: #e03131; }
 
@@ -82,118 +82,154 @@
         padding: 0.85rem 1rem;
         font-weight: 600;
     }
+
+    /* Layout de dashboard que ocupa exactamente el alto del sidebar sin scroll externo */
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .main-content > .filtro-fechas-card,
+    .main-content > .messages-wrapper {
+        flex: 0 0 auto;
+    }
+    .dashboard-shell {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+    .dashboard-shell > .row {
+        flex: 0 0 auto;
+    }
+    .dashboard-shell .panel {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .dashboard-shell .panel-scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="welcome-card">
-    <h1>
-        <i class="fas fa-fire me-2"></i>
-        Hola, {{ user.get_full_name|default:user.username }}
-    </h1>
-    <p>{{ hoy|date:"l, d \d\e F \d\e Y" }}</p>
-    <span class="rol-badge">
-        <i class="fas fa-user-shield me-1"></i>
-        {% if user.is_superuser %}Superadmin
-        {% elif perfil %}{{ perfil.get_rol_display }}
-        {% else %}Usuario{% endif %}
-    </span>
+{% if es_admin or es_mesero %}
+<div class="page-header mb-3">
+    <h1><i class="fas fa-chart-line text-primary me-2"></i> Reportes de ventas</h1>
 </div>
+<div class="filtro-fechas-card">
+    <form method="get">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label for="id_desde" class="d-block">Desde</label>
+                <input type="date" name="desde" id="id_desde"
+                       class="form-control form-control-sm"
+                       value="{{ desde|date:'Y-m-d' }}" max="{{ hoy|date:'Y-m-d' }}" required>
+            </div>
+            <div class="col-md-4">
+                <label for="id_hasta" class="d-block">Hasta</label>
+                <input type="date" name="hasta" id="id_hasta"
+                       class="form-control form-control-sm"
+                       value="{{ hasta|date:'Y-m-d' }}" max="{{ hoy|date:'Y-m-d' }}" required>
+            </div>
+            <div class="col-md-4 d-grid">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-filter me-1"></i> Aplicar
+                </button>
+            </div>
+        </div>
+        {% if form_fechas.non_field_errors %}
+            <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small">
+                {{ form_fechas.non_field_errors|join:" · " }}
+            </div>
+        {% endif %}
+    </form>
+</div>
+{% endif %}
 
 {# ====================== ADMIN ====================== #}
 {% if es_admin %}
+<div class="dashboard-shell">
     <div class="row g-3 mb-3">
-        <div class="col-6 col-md-4">
+        <div class="col-6 col-md-3">
             <div class="kpi-card success">
                 <i class="fas fa-sack-dollar kpi-icon"></i>
-                <div class="kpi-label">Ventas hoy</div>
-                <p class="kpi-value">${{ kpis.ventas_hoy|floatformat:0|intcomma }}</p>
+                <div class="kpi-label">Ingresos hoy</div>
+                <p class="kpi-value">${{ kpis.ingresos|floatformat:0|intcomma }}</p>
                 <div class="kpi-sub">{{ kpis.pedidos_hoy }} pedidos finalizados</div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
-            <div class="kpi-card accent">
-                <i class="fas fa-chair kpi-icon"></i>
-                <div class="kpi-label">Mesas ocupadas</div>
-                <p class="kpi-value">{{ kpis.mesas_ocupadas }}<small class="text-muted-sm">/{{ kpis.mesas_total }}</small></p>
-                <div class="kpi-sub">activas ahora</div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-card danger">
+                <i class="fas fa-basket-shopping kpi-icon"></i>
+                <div class="kpi-label">Inversión en insumos</div>
+                <p class="kpi-value">${{ kpis.inversion_insumos|floatformat:0|intcomma }}</p>
+                <div class="kpi-sub">costo de productos</div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
-            <div class="kpi-card {% if kpis.stock_bajo_count %}danger{% else %}success{% endif %}">
-                <i class="fas fa-triangle-exclamation kpi-icon"></i>
-                <div class="kpi-label">Stock bajo</div>
-                <p class="kpi-value">{{ kpis.stock_bajo_count }}</p>
-                <div class="kpi-sub">insumos por reponer</div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-card danger">
+                <i class="fas fa-mug-hot kpi-icon"></i>
+                <div class="kpi-label">Inversión en bebidas</div>
+                <p class="kpi-value">${{ kpis.inversion_bebidas|floatformat:0|intcomma }}</p>
+                <div class="kpi-sub">según costo de compra</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-card {% if kpis.ganancia < 0 %}danger{% else %}info{% endif %}">
+                <i class="fas fa-chart-line kpi-icon"></i>
+                <div class="kpi-label">Ganancia (balance)</div>
+                <p class="kpi-value">${{ kpis.ganancia|floatformat:0|intcomma }}</p>
+                <div class="kpi-sub">ingresos − inversiones</div>
             </div>
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-lg-7">
-            <div class="panel">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5><i class="fas fa-clock-rotate-left me-2 text-muted"></i>Últimos pedidos</h5>
-                    <a href="{% url 'pedidos:lista' %}" class="btn btn-sm btn-outline-primary">Ver todos</a>
-                </div>
-                {% if ultimos_pedidos %}
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Factura</th>
-                                    <th>Mesero</th>
-                                    <th>Mesa/Tipo</th>
-                                    <th>Estado</th>
-                                    <th class="text-end">Hora</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for p in ultimos_pedidos %}
-                                    <tr>
-                                        <td><a href="{% url 'pedidos:detalle' p.id_pedido %}"><strong>{{ p.numero_factura }}</strong></a></td>
-                                        <td>{{ p.mesero.get_username }}</td>
-                                        <td>
-                                            {% if p.mesa %}Mesa {{ p.mesa.numero_mesa }}
-                                            {% else %}{{ p.get_tipo_display }}{% endif %}
-                                        </td>
-                                        <td><span class="badge bg-secondary badge-estado">{{ p.get_estado_display }}</span></td>
-                                        <td class="text-end text-muted small">{{ p.fecha_creacion|date:"H:i" }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="empty"><i class="fas fa-inbox fa-2x mb-2"></i><p>Sin pedidos aún.</p></div>
-                {% endif %}
-            </div>
+    <div class="panel">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5><i class="fas fa-clock-rotate-left me-2 text-muted"></i>Últimos pedidos</h5>
+            <a href="{% url 'pedidos:lista' %}" class="btn btn-sm btn-outline-primary">Ver todos</a>
         </div>
-
-        <div class="col-lg-5">
-            <div class="panel">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5><i class="fas fa-triangle-exclamation me-2 text-danger"></i>Alertas de stock</h5>
-                    <a href="{% url 'inventario:listar_insumos' %}" class="btn btn-sm btn-outline-primary">Ver insumos</a>
-                </div>
-                {% if alertas_stock %}
-                    <ul class="list-unstyled mb-0">
-                        {% for insumo in alertas_stock %}
-                            <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                                <div>
-                                    <strong>{{ insumo.nombre_insumo }}</strong>
-                                    <div class="small text-muted">{{ insumo.categoria.nombre_categoria|default:"Sin categoría" }}</div>
-                                </div>
-                                <span class="badge bg-danger">{{ insumo.porcentaje_del_maximo }}% · {{ insumo.cantidad_insumo }} {{ insumo.get_unidad_medida_display }}</span>
-                            </li>
+        {% if ultimos_pedidos %}
+            <div class="table-responsive panel-scroll">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Factura</th>
+                            <th>Mesero</th>
+                            <th>Mesa/Tipo</th>
+                            <th>Estado</th>
+                            <th class="text-end">Total</th>
+                            <th class="text-end">Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in ultimos_pedidos %}
+                            <tr>
+                                <td><a href="{% url 'pedidos:detalle' p.id_pedido %}"><strong>{{ p.numero_factura }}</strong></a></td>
+                                <td>{{ p.mesero.get_username }}</td>
+                                <td>
+                                    {% if p.mesa %}Mesa {{ p.mesa.numero_mesa }}
+                                    {% else %}{{ p.get_tipo_display }}{% endif %}
+                                </td>
+                                <td><span class="badge bg-secondary badge-estado">{{ p.get_estado_display }}</span></td>
+                                <td class="text-end fw-semibold">${{ p.total|floatformat:0|intcomma }}</td>
+                                <td class="text-end text-muted small">{{ p.fecha_creacion|date:"H:i" }}</td>
+                            </tr>
                         {% endfor %}
-                    </ul>
-                {% else %}
-                    <div class="empty"><i class="fas fa-check-circle fa-2x mb-2 text-success"></i><p>Todo en orden.</p></div>
-                {% endif %}
+                    </tbody>
+                </table>
             </div>
-        </div>
+        {% else %}
+            <div class="empty"><i class="fas fa-inbox fa-2x mb-2"></i><p>Sin pedidos aún.</p></div>
+        {% endif %}
     </div>
+</div>
 {% endif %}
 
 {# ====================== MESERO ====================== #}
@@ -236,13 +272,14 @@
         {% if ultimos_pedidos %}
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
-                    <thead><tr><th>Factura</th><th>Mesa/Tipo</th><th>Estado</th><th class="text-end">Hora</th></tr></thead>
+                    <thead><tr><th>Factura</th><th>Mesa/Tipo</th><th>Estado</th><th class="text-end">Total</th><th class="text-end">Hora</th></tr></thead>
                     <tbody>
                         {% for p in ultimos_pedidos %}
                             <tr>
                                 <td><a href="{% url 'pedidos:detalle' p.id_pedido %}"><strong>{{ p.numero_factura }}</strong></a></td>
                                 <td>{% if p.mesa %}Mesa {{ p.mesa.numero_mesa }}{% else %}{{ p.get_tipo_display }}{% endif %}</td>
                                 <td><span class="badge bg-secondary badge-estado">{{ p.get_estado_display }}</span></td>
+                                <td class="text-end fw-semibold">${{ p.total|floatformat:0|intcomma }}</td>
                                 <td class="text-end text-muted small">{{ p.fecha_creacion|date:"H:i" }}</td>
                             </tr>
                         {% endfor %}

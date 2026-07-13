@@ -38,12 +38,14 @@ Parámetros:
             </div>
             <div class="modal-body">
                 <div class="row g-3">
+                    {% if puede_crear_mesa %}
                     <div class="col-6 col-md-3">
                         <button type="button" class="mesa-card mesa-nueva open-nueva-mesa w-100" title="Crear nueva mesa">
                             <div class="mesa-numero"><i class="fas fa-plus"></i></div>
                             <div class="mesa-estado">Nueva</div>
                         </button>
                     </div>
+                    {% endif %}
                     {% for mesa in mesas_disponibles %}
                         <div class="col-6 col-md-3">
                             {% if mesa.ocupada %}

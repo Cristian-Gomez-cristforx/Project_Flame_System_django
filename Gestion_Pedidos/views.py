@@ -63,8 +63,10 @@ def lista_pedidos(request):
 @rol_requerido(*ROLES_PEDIDOS)
 def crear_pedido(request):
     """Alta de un pedido nuevo; si se indicó nueva mesa la crea antes de asociarla."""
+    perfil = getattr(request.user, 'perfil', None)
+    puede_crear_mesa = request.user.is_superuser or bool(perfil and perfil.es_admin)
     if request.method == 'POST':
-        form = PedidoCrearForm(request.POST)
+        form = PedidoCrearForm(request.POST, user=request.user)
         if form.is_valid():
             try:
                 datos = dict(form.cleaned_data)
@@ -73,6 +75,7 @@ def crear_pedido(request):
                     datos.get('tipo') == Pedido.TipoPedido.MESA
                     and nueva_mesa_num
                     and not datos.get('mesa')
+                    and puede_crear_mesa
                 ):
                     datos['mesa'] = Mesa.objects.create(
                         numero_mesa=nueva_mesa_num,
@@ -85,12 +88,13 @@ def crear_pedido(request):
             except ValidationError as e:
                 messages.error(request, '; '.join(e.messages))
     else:
-        form = PedidoCrearForm()
+        form = PedidoCrearForm(user=request.user)
 
     return render(request, 'pedidos/crear.html', {
         'form': form,
         'tipos': Pedido.TipoPedido.choices,
         'mesas_disponibles': Mesa.objects.filter(activa=True).order_by('numero_mesa'),
+        'puede_crear_mesa': puede_crear_mesa,
     })
 
 
@@ -117,7 +121,11 @@ def _render_detalle(request, pedido, *, form_producto=None, form_bebida=None, er
 def _get_pedido_detalle(pedido_id):
     """Obtiene un pedido con sus relaciones precargadas (mesa, mesero, líneas)."""
     return get_object_or_404(
-        Pedido.objects.select_related('mesa', 'mesero').prefetch_related('productos__producto', 'bebidas__bebida'),
+        Pedido.objects.select_related('mesa', 'mesero').prefetch_related(
+            'productos__producto',
+            'productos__insumos__insumo',
+            'bebidas__bebida',
+        ),
         pk=pedido_id,
     )
 
@@ -179,6 +187,27 @@ def eliminar_item(request, pedido_id, tipo_item, item_id):
         messages.success(request, 'Ítem eliminado.')
     except ValidationError as e:
         messages.error(request, '; '.join(e.messages))
+    return redirect('pedidos:detalle', pedido_id=pedido_id)
+
+
+@rol_requerido(*ROLES_PEDIDOS)
+@require_POST
+def editar_receta_detalle(request, pedido_id, detalle_id):
+    """Actualiza qué insumos se usan en la receta de una línea de producto del pedido."""
+    pedido = get_object_or_404(Pedido, pk=pedido_id)
+    if pedido.estado != Pedido.EstadoPedido.PENDIENTE:
+        messages.error(request, 'Solo se puede modificar la receta de pedidos pendientes.')
+        return redirect('pedidos:detalle', pedido_id=pedido_id)
+
+    detalle = get_object_or_404(pedido.productos, pk=detalle_id)
+    seleccionados = set(request.POST.getlist('insumo'))
+    for insumo_detalle in detalle.insumos.all():
+        nuevo = str(insumo_detalle.pk) in seleccionados
+        if insumo_detalle.usar != nuevo:
+            insumo_detalle.usar = nuevo
+            insumo_detalle.save(update_fields=['usar'])
+
+    messages.success(request, f'Receta de {detalle.producto.nombre_producto} actualizada.')
     return redirect('pedidos:detalle', pedido_id=pedido_id)
 
 
@@ -320,17 +349,17 @@ def lista_mesas(request):
 
 
 @admin_requerido
+@require_POST
 def mesa_crear(request):
-    """Alta de una nueva mesa."""
-    form = MesaForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
+    """Alta de una nueva mesa desde el modal de la lista de mesas."""
+    form = MesaForm(request.POST)
+    if form.is_valid():
         mesa = form.save()
         messages.success(request, f'Mesa {mesa.numero_mesa} creada.')
-        return redirect('pedidos:mesas')
-    return render(request, 'pedidos/mesa_form.html', {
-        'form': form,
-        'modo': 'crear',
-    })
+    else:
+        errores = '; '.join(f'{", ".join(v)}' for v in form.errors.values())
+        messages.error(request, f'No se pudo crear la mesa. {errores}')
+    return redirect('pedidos:mesas')
 
 
 @admin_requerido

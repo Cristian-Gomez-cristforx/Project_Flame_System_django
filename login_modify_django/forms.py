@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.core.validators import MaxLengthValidator, MinLengthValidator, RegexValidator
 
@@ -266,6 +266,7 @@ class NuevaContrasenaForm(forms.Form):
             'autofocus': True,
         }),
         min_length=8,
+        help_text=password_validation.password_validators_help_text_html(),
     )
     password2 = forms.CharField(
         label='Confirmar contraseña',
@@ -277,13 +278,18 @@ class NuevaContrasenaForm(forms.Form):
         min_length=8,
     )
 
-    def clean(self):
-        cleaned = super().clean()
-        p1 = cleaned.get('password1')
-        p2 = cleaned.get('password2')
+    def __init__(self, *args, usuario=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.usuario = usuario
+
+    def clean_password2(self):
+        p1 = self.cleaned_data.get('password1')
+        p2 = self.cleaned_data.get('password2')
         if p1 and p2 and p1 != p2:
-            self.add_error('password2', 'Las contraseñas no coinciden.')
-        return cleaned
+            raise forms.ValidationError('Las contraseñas no coinciden.')
+        if p2:
+            password_validation.validate_password(p2, self.usuario)
+        return p2
 
 
 class PerfilForm(forms.ModelForm):

@@ -53,6 +53,12 @@ class Pedido(models.Model):
          related_name='pedidos')
     nombre_cliente = models.CharField(max_length=70,blank=True,verbose_name="Nombre del cliente")
     telefono_cliente = models.CharField(max_length=20,blank=True,verbose_name="Teléfono del cliente")
+    minutos_recogida = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        verbose_name="Tiempo pactado de recogida (minutos)",
+    )
     
     def clean(self):
 
@@ -73,6 +79,11 @@ class Pedido(models.Model):
         if (
            self.tipo == self.TipoPedido.RECOGIDA and self.mesa):
            raise ValidationError("Los pedidos para recoger no usan mesa.")
+
+        if (
+           self.tipo == self.TipoPedido.RECOGIDA and not self.minutos_recogida):
+           raise ValidationError(
+               "Debe indicar el tiempo pactado de recogida en minutos.")
         
         
         if (

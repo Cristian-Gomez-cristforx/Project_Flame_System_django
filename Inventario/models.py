@@ -255,12 +255,14 @@ class Bebida(models.Model):
         return f"{self.nombre_bebida} ({self.tamaño_bebida})"
     
     def clean(self):
-        
-        if self.precio_venta <= self.precio_compra:
-            raise ValidationError({
-                'precio_venta':
-                'Precio de venta debe ser mayor que el de compra.'
-             })
+
+        if self.precio_compra and self.cantidad_bebida:
+            unitario_compra = Decimal(self.precio_compra) / Decimal(self.cantidad_bebida)
+            if self.precio_venta and Decimal(self.precio_venta) <= unitario_compra:
+                raise ValidationError({
+                    'precio_venta':
+                    f'El precio de venta por unidad debe ser mayor que el costo unitario (${unitario_compra:.0f}).'
+                 })
             
         if not self.cantidad_a_agregar:
             return

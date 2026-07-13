@@ -24,6 +24,20 @@
             text-align: left;
             cursor: pointer;
         }
+        .sidebar .nav-group-toggle,
+        .sidebar .nav-group-toggle:focus,
+        .sidebar .nav-group-toggle:focus-visible,
+        .sidebar .nav-group-toggle:active,
+        .sidebar .nav-group-toggle[aria-expanded="true"] {
+            background-color: transparent;
+            color: var(--flame-sidebar-text);
+            box-shadow: none;
+            outline: none;
+        }
+        .sidebar .nav-group-toggle:hover {
+            background-color: rgba(255, 255, 255, 0.06);
+            color: var(--flame-sidebar-text);
+        }
         .nav-group-toggle .nav-chevron {
             font-size: 0.75rem;
             transition: transform 0.2s ease;
@@ -52,7 +66,10 @@
 
             <!-- SIDEBAR -->
             <nav class="col-md-3 col-lg-2 sidebar p-4">
-                <div class="text-center mb-4">
+                <div class="text-center mb-4 sidebar-brand"
+                     role="link" tabindex="0"
+                     onclick="window.location.href='{% url 'login_modify:dashboard' %}'"
+                     onkeydown="if(event.key==='Enter'){window.location.href='{% url 'login_modify:dashboard' %}';}">
                     <h3 class="fw-bold mb-1">
                         <i class="fas fa-fire" style="color: var(--flame-accent);"></i>
                         FlameSystem
@@ -124,9 +141,23 @@
                         </a>
                     </div>
 
-                    <a href="{% url 'reportes:dashboard' %}" class="nav-link {% block nav_reportes %}{% endblock %}">
-                        <i class="fas fa-chart-line"></i> Reportes
-                    </a>
+                    <button class="nav-link nav-group-toggle" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#submenuReportes"
+                            aria-expanded="false" aria-controls="submenuReportes">
+                        <span><i class="fas fa-chart-line"></i> Reportes</span>
+                        <i class="fas fa-chevron-down nav-chevron"></i>
+                    </button>
+                    <div class="collapse nav-submenu" id="submenuReportes">
+                        <a href="{% url 'reportes:dashboard' %}" class="nav-link {% block nav_reportes %}{% endblock %}">
+                            <i class="fas fa-receipt"></i> Pedidos
+                        </a>
+                        <a href="{% url 'reportes:ventas' %}" class="nav-link {% block nav_reportes_ventas %}{% endblock %}">
+                            <i class="fas fa-cash-register"></i> Ventas
+                        </a>
+                        <a href="{% url 'reportes:mermas' %}" class="nav-link {% block nav_reportes_mermas %}{% endblock %}">
+                            <i class="fas fa-exclamation-triangle"></i> Mermas
+                        </a>
+                    </div>
                     <a href="{% url 'login_modify:usuarios_lista' %}" class="nav-link {% block nav_usuarios %}{% endblock %}">
                         <i class="fas fa-users"></i> Gestión de usuarios
                     </a>

@@ -64,9 +64,9 @@
     <h1><i class="fas fa-chair me-2"></i> Mesas</h1>
     <div class="d-flex gap-2">
         {% if es_admin %}
-            <a href="{% url 'pedidos:mesa_crear' %}" class="btn btn-outline-primary">
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#crearMesaModal">
                 <i class="fas fa-plus me-1"></i> Nueva mesa
-            </a>
+            </button>
         {% endif %}
         <a href="{% url 'pedidos:crear' %}" class="btn btn-primary">
             <i class="fas fa-plus me-1"></i> Nuevo pedido
@@ -123,9 +123,9 @@
             No hay mesas registradas.
             {% if es_admin %}
                 <div class="mt-3">
-                    <a href="{% url 'pedidos:mesa_crear' %}" class="btn btn-primary">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearMesaModal">
                         <i class="fas fa-plus me-1"></i> Crear la primera mesa
-                    </a>
+                    </button>
                 </div>
             {% endif %}
         </div>
@@ -133,6 +133,39 @@
 </div>
 
 {% if es_admin %}
+<div class="modal fade" id="crearMesaModal" tabindex="-1" aria-labelledby="crearMesaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'pedidos:mesa_crear' %}" id="crear-mesa-form">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crearMesaModalLabel">
+                        <i class="fas fa-plus text-primary me-2"></i>Nueva mesa
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="crear-mesa-numero">Número de la mesa <span class="text-danger">*</span></label>
+                        <input type="number" name="numero_mesa" id="crear-mesa-numero" class="form-control" min="1" step="1" placeholder="Ej: 12" autocomplete="off" required>
+                        <div class="form-text small">Debe ser único y mayor a 0.</div>
+                        <div class="text-danger small mt-1 d-none" id="crear-mesa-error"></div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="activa" id="crear-mesa-activa" class="form-check-input" checked>
+                        <label class="form-check-label" for="crear-mesa-activa">Mesa activa</label>
+                        <div class="form-text small">Las mesas inactivas no aparecen al crear pedidos.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-check me-1"></i> Añadir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="editarMesaModal" tabindex="-1" aria-labelledby="editarMesaModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
@@ -187,6 +220,24 @@
             numeroLabel.textContent = btn.dataset.mesaNumero;
             bootstrap.Modal.getOrCreateInstance(modalEl).show();
         });
+    });
+})();
+
+(function () {
+    const crearForm = document.getElementById('crear-mesa-form');
+    if (!crearForm) return;
+    const crearInput = document.getElementById('crear-mesa-numero');
+    const crearError = document.getElementById('crear-mesa-error');
+    crearForm.addEventListener('submit', function (e) {
+        crearError.classList.add('d-none');
+        crearError.textContent = '';
+        const val = parseInt(crearInput.value, 10);
+        if (!Number.isInteger(val) || val < 1) {
+            e.preventDefault();
+            crearError.textContent = 'Ingresa un número válido mayor a 0.';
+            crearError.classList.remove('d-none');
+            crearInput.focus();
+        }
     });
 })();
 </script>

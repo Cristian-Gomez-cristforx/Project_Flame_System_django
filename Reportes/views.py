@@ -106,13 +106,6 @@ def mermas(request):
     })
 
 
-@admin_requerido
-def inventario(request):
-    """Estado actual del inventario: insumos ok, con stock bajo y sin turno activo."""
-    estado = services.estado_inventario()
-    return render(request, 'reportes/inventario.html', {'estado': estado})
-
-
 MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
             'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 

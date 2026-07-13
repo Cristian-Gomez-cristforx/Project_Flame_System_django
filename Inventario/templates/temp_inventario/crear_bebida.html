@@ -49,18 +49,29 @@
                         <div class="field-error text-danger small mt-1" data-for="cantidad_bebida">{{ form.cantidad_bebida.errors|join:" " }}</div>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Precio de Compra</label>
+                        <label class="form-label">Precio de Compra del Lote</label>
                         <input type="number" name="precio_compra" class="form-control solo-enteros"
                                min="1" step="1" inputmode="numeric" pattern="\d*"
                                value="{{ form.precio_compra.value|default_if_none:'' }}" required>
                         <div class="field-error text-danger small mt-1" data-for="precio_compra">{{ form.precio_compra.errors|join:" " }}</div>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Precio de Venta</label>
+                        <label class="form-label">Precio de Venta por Unidad</label>
                         <input type="number" name="precio_venta" class="form-control solo-enteros"
                                min="1" step="1" inputmode="numeric" pattern="\d*"
                                value="{{ form.precio_venta.value|default_if_none:'' }}" required>
                         <div class="field-error text-danger small mt-1" data-for="precio_venta">{{ form.precio_venta.errors|join:" " }}</div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <div id="precio-unitario-info" class="alert alert-info py-2 mb-0 d-none">
+                            <i class="fas fa-calculator me-2"></i>
+                            Precio unitario de compra:
+                            <strong>$<span id="precio-unitario-valor">0</span></strong>
+                            <small class="text-muted ms-2">(precio del lote ÷ cantidad en stock)</small>
+                        </div>
                     </div>
                 </div>
 
@@ -132,8 +143,14 @@ document.querySelectorAll('.solo-letras').forEach(input => {
         precio_venta: v => {
             const venta = parseInt(v, 10);
             const compra = parseInt(q('precio_compra').value, 10);
+            const cant = parseInt(q('cantidad_bebida').value, 10);
             if (!(venta >= 1)) return 'El precio de venta debe ser al menos 1.';
-            if (!isNaN(compra) && venta <= compra) return 'El precio de venta debe ser mayor que el de compra.';
+            if (!isNaN(compra) && !isNaN(cant) && cant > 0) {
+                const unitario = compra / cant;
+                if (venta <= unitario) {
+                    return `El precio de venta por unidad debe ser mayor que el costo unitario ($${Math.round(unitario)}).`;
+                }
+            }
             return '';
         },
     };
@@ -164,6 +181,28 @@ document.querySelectorAll('.solo-letras').forEach(input => {
         for (const name in validators) touched.add(name);
         if (!validateAll()) e.preventDefault();
     });
+
+    const caja = document.getElementById('precio-unitario-info');
+    const salida = document.getElementById('precio-unitario-valor');
+    function recalcularUnitario() {
+        const cant = parseInt(q('cantidad_bebida').value, 10);
+        const compra = parseInt(q('precio_compra').value, 10);
+        if (cant > 0 && compra > 0) {
+            const unitario = compra / cant;
+            salida.textContent = unitario.toLocaleString('es-CO', {
+                minimumFractionDigits: 0, maximumFractionDigits: 2,
+            });
+            caja.classList.remove('d-none');
+        } else {
+            caja.classList.add('d-none');
+        }
+    }
+    ['cantidad_bebida', 'precio_compra'].forEach(n => {
+        const input = q(n);
+        if (!input) return;
+        input.addEventListener('input', recalcularUnitario);
+    });
+    recalcularUnitario();
 })();
 </script>
 {% endblock %}

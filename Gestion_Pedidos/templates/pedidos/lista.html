@@ -41,7 +41,8 @@
             <tr>
                 <th>Factura</th>
                 <th>Tipo</th>
-                <th>Cliente / Mesa</th>
+                <th>Cliente</th>
+                <th>Info</th>
                 <th>Mesero</th>
                 <th>Estado</th>
                 <th>Fecha</th>
@@ -53,11 +54,18 @@
                 <tr>
                     <td><strong>{{ p.numero_factura|default:"—" }}</strong></td>
                     <td>{{ p.get_tipo_display }}</td>
+                    <td>{{ p.nombre_cliente|default:"—" }}</td>
                     <td>
-                        {% if p.mesa %}
+                        {% if p.tipo == 'Mesa' and p.mesa %}
                             <i class="fas fa-chair me-1"></i> Mesa {{ p.mesa.numero_mesa }}
+                        {% elif p.tipo == 'Domicilio' and p.direccion_pedi %}
+                            <i class="fas fa-map-marker-alt me-1"></i> {{ p.direccion_pedi }}
+                        {% elif p.tipo == 'Recoger' and p.minutos_recogida %}
+                            <i class="fas fa-clock me-1"></i> {{ p.minutos_recogida }} min
+                        {% elif p.tipo == 'Recoger' %}
+                            <span class="text-muted">N/A</span>
                         {% else %}
-                            {{ p.nombre_cliente|default:"—" }}
+                            <span class="text-muted">—</span>
                         {% endif %}
                     </td>
                     <td>{{ p.mesero.get_username }}</td>
@@ -82,7 +90,7 @@
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">
+                    <td colspan="8" class="text-center text-muted py-4">
                         No hay pedidos que coincidan.
                     </td>
                 </tr>

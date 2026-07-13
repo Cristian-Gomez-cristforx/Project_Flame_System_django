@@ -16,6 +16,18 @@
 
 html, body {
     height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+body > .container-fluid {
+    height: 100vh;
+    padding: 0;
+}
+body > .container-fluid > .row {
+    height: 100vh;
+    margin: 0;
+    flex-wrap: nowrap;
 }
 
 body {
@@ -28,15 +40,24 @@ body {
 .sidebar {
     background-color: var(--flame-sidebar-bg);
     color: var(--flame-sidebar-text);
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
 }
 
 .sidebar h3 {
     color: var(--flame-accent);
     letter-spacing: 0.5px;
+}
+
+.sidebar .sidebar-brand {
+    cursor: pointer;
+}
+
+.sidebar .sidebar-brand:hover {
+    opacity: 0.9;
 }
 
 .sidebar .nav-link {
@@ -96,7 +117,8 @@ body {
 /* ==================== MAIN CONTENT ==================== */
 .main-content {
     background-color: var(--flame-bg);
-    min-height: 100vh;
+    height: 100vh;
+    overflow-y: auto;
 }
 
 .page-header {
@@ -227,8 +249,23 @@ body {
 
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 767.98px) {
+    html, body {
+        height: auto;
+        overflow: visible;
+    }
+    body > .container-fluid,
+    body > .container-fluid > .row {
+        height: auto;
+        flex-wrap: wrap;
+    }
     .sidebar {
+        height: auto;
         min-height: auto;
+        overflow-y: visible;
+    }
+    .main-content {
+        height: auto;
+        overflow-y: visible;
     }
     .sidebar-footer {
         padding-top: 1rem;

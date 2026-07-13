@@ -69,6 +69,7 @@ class PedidoCrearForm(forms.ModelForm):
             'nombre_cliente',
             'telefono_cliente',
             'direccion_pedi',
+            'minutos_recogida',
         ]
         widgets = {
             'tipo': forms.Select(attrs=BOOTSTRAP_SELECT),
@@ -76,15 +77,30 @@ class PedidoCrearForm(forms.ModelForm):
             'nombre_cliente': forms.TextInput(attrs=BOOTSTRAP_INPUT),
             'telefono_cliente': forms.TextInput(attrs={**NUMERIC_ATTRS, 'maxlength': str(TELEFONO_LEN)}),
             'direccion_pedi': forms.TextInput(attrs=BOOTSTRAP_INPUT),
+            'minutos_recogida': forms.NumberInput(attrs={
+                **BOOTSTRAP_INPUT,
+                'min': 1,
+                'placeholder': 'Ej: 30',
+            }),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.user = user
         self.fields['mesa'].queryset = Mesa.objects.filter(activa=True, ocupada=False).order_by('numero_mesa')
         self.fields['mesa'].required = False
         self.fields['nombre_cliente'].required = False
         self.fields['telefono_cliente'].required = False
         self.fields['direccion_pedi'].required = False
+        self.fields['minutos_recogida'].required = False
+
+    def _puede_crear_mesa(self):
+        if not self.user or not self.user.is_authenticated:
+            return False
+        if self.user.is_superuser:
+            return True
+        perfil = getattr(self.user, 'perfil', None)
+        return bool(perfil and perfil.es_admin)
         self.fields['nombre_cliente'].validators.append(solo_letras)
         self.fields['telefono_cliente'].validators.extend([
             solo_numeros,
@@ -96,6 +112,10 @@ class PedidoCrearForm(forms.ModelForm):
         numero = self.cleaned_data.get('nueva_mesa')
         if numero in (None, ''):
             return None
+        if not self._puede_crear_mesa():
+            raise forms.ValidationError(
+                'Solo el administrador puede crear nuevas mesas.'
+            )
         if Mesa.objects.filter(numero_mesa=numero).exists():
             raise forms.ValidationError(
                 f'La mesa {numero} ya existe. Selecciónala en el listado.'
@@ -132,6 +152,10 @@ class PedidoCrearForm(forms.ModelForm):
 
         if tipo == Pedido.TipoPedido.RECOGIDA and (mesa or nueva_mesa):
             self.add_error('mesa', 'Los pedidos para recoger no usan mesa.')
+
+        minutos = cleaned.get('minutos_recogida')
+        if tipo == Pedido.TipoPedido.RECOGIDA and not minutos:
+            self.add_error('minutos_recogida', 'Indica el tiempo pactado de recogida en minutos.')
 
         return cleaned
 

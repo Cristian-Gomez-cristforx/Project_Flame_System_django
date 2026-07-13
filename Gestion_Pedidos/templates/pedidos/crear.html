@@ -28,7 +28,7 @@
                 </div>
 
                 <div class="col-md-6" data-show-when-tipo="Mesa">
-                    {% include 'pedidos/_mesa_field.html' with mesas_disponibles=mesas_disponibles form=form %}
+                    {% include 'pedidos/_mesa_field.html' with mesas_disponibles=mesas_disponibles form=form puede_crear_mesa=puede_crear_mesa %}
                 </div>
 
                 <div class="col-md-6">
@@ -49,6 +49,12 @@
                     <label class="form-label">Dirección</label>
                     {{ form.direccion_pedi }}
                     {{ form.direccion_pedi.errors }}
+                </div>
+
+                <div class="col-md-6" data-show-when-tipo="Recoger">
+                    <label class="form-label" for="{{ form.minutos_recogida.id_for_label }}">Tiempo pactado de recogida (minutos)</label>
+                    {{ form.minutos_recogida }}
+                    {{ form.minutos_recogida.errors }}
                 </div>
             </div>
 
@@ -87,6 +93,16 @@
 
         const LETRAS = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/;
         const DIGITOS = /^\d+$/;
+
+        const nombreInput = document.getElementById('{{ form.nombre_cliente.id_for_label }}');
+        if (nombreInput) {
+            nombreInput.addEventListener('input', function () {
+                const limpio = nombreInput.value.replace(/[^A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]/g, '');
+                if (limpio !== nombreInput.value) {
+                    nombreInput.value = limpio;
+                }
+            });
+        }
 
         const reglas = [
             {
