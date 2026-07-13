@@ -67,7 +67,9 @@ class Pedido(models.Model):
                 "Debe seleccionar un tipo de pago.")
          
         if (
-           self.tipo == self.TipoPedido.MESA and not self.mesa):
+           self.tipo == self.TipoPedido.MESA
+           and not self.mesa
+           and not getattr(self, '_defer_mesa', False)):
            raise ValidationError(
                "Debe seleccionar una mesa.")
         

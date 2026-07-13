@@ -159,6 +159,11 @@ class PedidoCrearForm(forms.ModelForm):
 
         return cleaned
 
+    def _post_clean(self):
+        if self.cleaned_data.get('nueva_mesa') and not self.cleaned_data.get('mesa'):
+            self.instance._defer_mesa = True
+        super()._post_clean()
+
 
 class AgregarProductoForm(forms.Form):
     producto = forms.ModelChoiceField(
