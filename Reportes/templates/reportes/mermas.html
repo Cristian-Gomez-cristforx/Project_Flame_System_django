@@ -1,20 +1,21 @@
 {% extends 'base.html' %}
 
-{% block title %}Reporte de mermas{% endblock %}
+{% block title %}Reportes de mermas{% endblock %}
 {% block nav_reportes_mermas %}active{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1><i class="fas fa-exclamation-triangle text-danger me-2"></i> Reporte de mermas</h1>
-    <a href="{% url 'reportes:dashboard' %}" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left"></i> Volver
-    </a>
+    <h1><i class="fas fa-exclamation-triangle me-2"></i> Reportes de mermas</h1>
 </div>
 
 {% include 'reportes/_filtro.html' %}
 
 <p class="text-muted-sm">
-    Período: <strong>{{ resumen.desde|date:"d/m/Y" }}</strong> a <strong>{{ resumen.hasta|date:"d/m/Y" }}</strong>
+    {% if request.GET.desde or request.GET.hasta %}
+        Período: <strong>{{ resumen.desde|date:"d/m/Y" }}</strong> a <strong>{{ resumen.hasta|date:"d/m/Y" }}</strong>
+    {% else %}
+        Período: <strong>Hoy</strong>
+    {% endif %}
 </p>
 
 <div class="row g-3 mb-4">
@@ -38,53 +39,35 @@
     </div>
 </div>
 
-<div class="row g-4 mb-4">
-    <div class="col-lg-6">
-        <div class="card shadow">
-            <div class="card-header">Por motivo</div>
-            <div class="card-body">
-                <table class="table table-sm align-middle mb-0">
-                    <thead>
-                        <tr><th>Motivo</th><th class="text-end">Und.</th><th class="text-end">Costo</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for item in resumen.por_motivo %}
-                        <tr>
-                            <td>{{ item.motivo }}</td>
-                            <td class="text-end">{{ item.unidades }}</td>
-                            <td class="text-end text-danger">${{ item.costo|floatformat:0 }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="3" class="text-center text-muted py-3">Sin datos.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-6">
-        <div class="card shadow">
-            <div class="card-header">Top insumos mermados</div>
-            <div class="card-body">
-                <table class="table table-sm align-middle mb-0">
-                    <thead>
-                        <tr><th>Insumo</th><th class="text-end">Und.</th><th class="text-end">Costo</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for item in resumen.por_insumo %}
-                        <tr>
-                            <td>{{ item.insumo__nombre_insumo }}</td>
-                            <td class="text-end">{{ item.unidades }}</td>
-                            <td class="text-end text-danger">${{ item.costo|floatformat:0 }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="3" class="text-center text-muted py-3">Sin datos.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div class="card shadow mb-4">
+    <div class="card-header">Por motivo</div>
+    <div class="card-body">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Motivo</th>
+                    <th class="text-end">Frecuencia</th>
+                    <th class="text-end">Gramos</th>
+                    <th class="text-end">Unidades</th>
+                    <th class="text-end">Total</th>
+                    <th class="text-end">Costo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in resumen.por_motivo %}
+                <tr>
+                    <td>{{ item.motivo }}</td>
+                    <td class="text-end">{{ item.frecuencia }}</td>
+                    <td class="text-end">{{ item.gramos }}</td>
+                    <td class="text-end">{{ item.unidades }}</td>
+                    <td class="text-end fw-bold">{{ item.total }}</td>
+                    <td class="text-end text-danger">${{ item.costo|floatformat:0 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-3">Sin datos.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 

@@ -1,0 +1,29 @@
+<form method="GET" class="row g-2 align-items-end mb-4">
+    <div class="col-md-3">
+        <label class="form-label">{{ form.desde_mes.label }}</label>
+        {{ form.desde_mes }}
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">{{ form.hasta_mes.label }}</label>
+        {{ form.hasta_mes }}
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+        {% if filtrado %}
+        <a href="{{ request.path }}" class="btn btn-outline-secondary" title="Volver al rango por defecto">
+            <i class="fas fa-xmark"></i>
+        </a>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-filter"></i> Filtrar
+        </button>
+    </div>
+    {% if form.non_field_errors or form.desde_mes.errors or form.hasta_mes.errors %}
+        <div class="col-12">
+            <div class="alert alert-danger mt-2">
+                {{ form.non_field_errors }}
+                {{ form.desde_mes.errors }}
+                {{ form.hasta_mes.errors }}
+            </div>
+        </div>
+    {% endif %}
+</form>

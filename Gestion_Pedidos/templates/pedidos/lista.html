@@ -5,10 +5,17 @@
 
 {% block content %}
 <div class="page-header">
-    <h1><i class="fas fa-receipt me-2"></i> Pedidos</h1>
-    <a href="{% url 'pedidos:crear' %}" class="btn btn-primary">
-        <i class="fas fa-plus me-1"></i> Nuevo pedido
-    </a>
+    <h1><i class="fas fa-list me-2"></i> Pedidos</h1>
+    <div class="d-flex gap-2">
+        {% if request.GET.from == 'inicio' %}
+        <a href="{% url 'login_modify:dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Volver a inicio
+        </a>
+        {% endif %}
+        <a href="{% url 'pedidos:crear' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> Nuevo pedido
+        </a>
+    </div>
 </div>
 
 <div class="card mb-4">
@@ -26,8 +33,13 @@
                 <label class="form-label">Buscar</label>
                 {{ filtro.q }}
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-outline-primary w-100">
+            <div class="col-md-2 d-flex gap-2">
+                {% if request.GET.estado or request.GET.tipo or request.GET.q %}
+                <a href="{{ request.path }}" class="btn btn-outline-secondary" title="Limpiar filtro">
+                    <i class="fas fa-xmark"></i>
+                </a>
+                {% endif %}
+                <button type="submit" class="btn btn-outline-primary flex-grow-1">
                     <i class="fas fa-filter me-1"></i> Filtrar
                 </button>
             </div>
@@ -52,7 +64,11 @@
         <tbody>
             {% for p in pedidos %}
                 <tr>
-                    <td><strong>{{ p.numero_factura|default:"—" }}</strong></td>
+                    <td>
+                        <a href="{% url 'pedidos:detalle' p.id_pedido %}{% if request.GET.from == 'inicio' %}?from=inicio{% endif %}">
+                            <strong>{{ p.numero_factura|default:"—" }}</strong>
+                        </a>
+                    </td>
                     <td>{{ p.get_tipo_display }}</td>
                     <td>{{ p.nombre_cliente|default:"—" }}</td>
                     <td>
@@ -76,16 +92,11 @@
                     </td>
                     <td class="text-muted-sm">{{ p.fecha_creacion|date:"d M H:i" }}</td>
                     <td class="text-end">
-                        <div class="btn-group btn-group-sm" role="group">
-                            <a href="{% url 'pedidos:detalle' p.id_pedido %}" class="btn btn-outline-primary">
-                                Ver <i class="fas fa-arrow-right ms-1"></i>
+                        {% if p.estado == 'Cocinado' or p.estado == 'Pagado' or p.estado == 'Finalizado' %}
+                            <a href="{% url 'pedidos:factura_imagen' p.id_pedido %}" class="btn btn-sm btn-outline-secondary" title="Descargar factura">
+                                <i class="fas fa-download"></i>
                             </a>
-                            {% if p.estado == 'Cocinado' or p.estado == 'Pagado' or p.estado == 'Finalizado' %}
-                                <a href="{% url 'pedidos:factura_imagen' p.id_pedido %}" class="btn btn-outline-secondary" title="Descargar factura">
-                                    <i class="fas fa-download"></i>
-                                </a>
-                            {% endif %}
-                        </div>
+                        {% endif %}
                     </td>
                 </tr>
             {% empty %}

@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="page-header">
-    <h1><i class="fas fa-boxes text-primary me-2"></i> Listado de Insumos</h1>
+    <h1><i class="fas fa-carrot me-2"></i> Listado de Insumos</h1>
     <div>
         <a href="{% url 'inventario:crear_insumo' %}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Nuevo Insumo
@@ -41,12 +41,14 @@
             {% endfor %}
         </select>
 
-        <button type="submit" class="btn btn-outline-primary">
-            <i class="fas fa-search"></i> Filtrar
-        </button>
         {% if request.GET.q or unidad_actual or categoria_actual %}
-            <a href="{% url 'inventario:listar_insumos' %}" class="btn btn-secondary">Limpiar</a>
+            <a href="{{ request.path }}" class="btn btn-outline-secondary" title="Limpiar filtro">
+                <i class="fas fa-xmark"></i>
+            </a>
         {% endif %}
+        <button type="submit" class="btn btn-outline-primary">
+            <i class="fas fa-filter"></i> Filtrar
+        </button>
     </form>
 </div>
 

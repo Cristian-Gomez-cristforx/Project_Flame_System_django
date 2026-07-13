@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block title %}Reportes{% endblock %}
+{% block title %}Reportes de pedidos{% endblock %}
 {% block nav_reportes %}active{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1><i class="fas fa-chart-line text-primary me-2"></i> Reportes</h1>
+    <h1><i class="fas fa-receipt me-2"></i> Reportes de pedidos</h1>
     <div>
         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalReportePedidos">
             <i class="fas fa-file-download"></i> Reporte de pedidos
@@ -134,7 +134,11 @@
 {% include 'reportes/_filtro.html' %}
 
 <p class="text-muted-sm">
-    Período: <strong>{{ ventas.desde|date:"d/m/Y" }}</strong> a <strong>{{ ventas.hasta|date:"d/m/Y" }}</strong>
+    {% if request.GET.desde or request.GET.hasta %}
+        Período: <strong>{{ ventas.desde|date:"d/m/Y" }}</strong> a <strong>{{ ventas.hasta|date:"d/m/Y" }}</strong>
+    {% else %}
+        Período: <strong>Hoy</strong>
+    {% endif %}
 </p>
 
 <div class="row g-3 mb-4">

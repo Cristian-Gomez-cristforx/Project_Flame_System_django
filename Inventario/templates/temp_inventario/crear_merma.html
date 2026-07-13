@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="page-header">
-    <h1><i class="fas fa-exclamation-triangle text-danger me-2"></i> Registrar nueva merma</h1>
+    <h1><i class="fas fa-exclamation-triangle me-2"></i> Registrar nueva merma</h1>
     <a href="{% url 'inventario:listar_mermas' %}" class="btn btn-outline-secondary">
         <i class="fas fa-arrow-left"></i> Volver
     </a>
@@ -23,7 +23,7 @@
                         <option value="">Seleccione un insumo...</option>
                         {% for insumo in insumos %}
                             <option value="{{ insumo.id_insumo }}" data-stock="{{ insumo.cantidad_insumo }}">
-                                {{ insumo.nombre_insumo }} (Stock: {{ insumo.cantidad_insumo }})
+                                {{ insumo.nombre_insumo }} | Stock: {{ insumo.cantidad_insumo }} | Unidad: {% if insumo.unidad_medida == 'g' %}gramos{% else %}unidades{% endif %}
                             </option>
                         {% endfor %}
                     </select>
@@ -111,7 +111,7 @@
             if (!(n >= 1)) return 'La cantidad debe ser al menos 1.';
             const stock = stockDelInsumo();
             if (stock !== null && n > stock) {
-                return `No puedes mermar más de ${stock} (stock actual).`;
+                return 'La cantidad a mermar no debe ser mayor al stock actual';
             }
             return '';
         },

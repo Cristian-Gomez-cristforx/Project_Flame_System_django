@@ -120,7 +120,7 @@
 {% block content %}
 {% if es_admin or es_mesero %}
 <div class="page-header mb-3">
-    <h1><i class="fas fa-chart-line text-primary me-2"></i> Reportes de ventas</h1>
+    <h1><i class="fas fa-cash-register me-2"></i> Reportes de ventas</h1>
 </div>
 <div class="filtro-fechas-card">
     <form method="get">
@@ -137,9 +137,14 @@
                        class="form-control form-control-sm"
                        value="{{ hasta|date:'Y-m-d' }}" max="{{ hoy|date:'Y-m-d' }}" required>
             </div>
-            <div class="col-md-4 d-grid">
-                <button type="submit" class="btn btn-sm btn-primary">
-                    <i class="fas fa-filter me-1"></i> Aplicar
+            <div class="col-md-4 d-flex gap-2">
+                {% if request.GET %}
+                <a href="{{ request.path }}" class="btn btn-sm btn-outline-secondary" title="Limpiar filtro">
+                    <i class="fas fa-xmark"></i>
+                </a>
+                {% endif %}
+                <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                    <i class="fas fa-filter me-1"></i> Filtrar
                 </button>
             </div>
         </div>
@@ -159,9 +164,9 @@
         <div class="col-6 col-md-3">
             <div class="kpi-card success">
                 <i class="fas fa-sack-dollar kpi-icon"></i>
-                <div class="kpi-label">Ingresos hoy</div>
+                <div class="kpi-label">Ventas</div>
                 <p class="kpi-value">${{ kpis.ingresos|floatformat:0|intcomma }}</p>
-                <div class="kpi-sub">{{ kpis.pedidos_hoy }} pedidos finalizados</div>
+                <div class="kpi-sub">{{ kpis.pedidos_hoy }} pedidos</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
@@ -169,15 +174,15 @@
                 <i class="fas fa-basket-shopping kpi-icon"></i>
                 <div class="kpi-label">Inversión en insumos</div>
                 <p class="kpi-value">${{ kpis.inversion_insumos|floatformat:0|intcomma }}</p>
-                <div class="kpi-sub">costo de productos</div>
+                <div class="kpi-sub">costo de insumos consumidos</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="kpi-card danger">
-                <i class="fas fa-mug-hot kpi-icon"></i>
+                <i class="fas fa-wine-bottle kpi-icon"></i>
                 <div class="kpi-label">Inversión en bebidas</div>
                 <p class="kpi-value">${{ kpis.inversion_bebidas|floatformat:0|intcomma }}</p>
-                <div class="kpi-sub">según costo de compra</div>
+                <div class="kpi-sub">costo de bebidas vendidas</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
@@ -185,7 +190,7 @@
                 <i class="fas fa-chart-line kpi-icon"></i>
                 <div class="kpi-label">Ganancia (balance)</div>
                 <p class="kpi-value">${{ kpis.ganancia|floatformat:0|intcomma }}</p>
-                <div class="kpi-sub">ingresos − inversiones</div>
+                <div class="kpi-sub">ventas − inversiones</div>
             </div>
         </div>
     </div>
@@ -193,7 +198,7 @@
     <div class="panel">
         <div class="d-flex justify-content-between align-items-center mb-2">
             <h5><i class="fas fa-clock-rotate-left me-2 text-muted"></i>Últimos pedidos</h5>
-            <a href="{% url 'pedidos:lista' %}" class="btn btn-sm btn-outline-primary">Ver todos</a>
+            <a href="{% url 'pedidos:lista' %}?from=inicio" class="btn btn-sm btn-outline-primary">Ver todos</a>
         </div>
         {% if ultimos_pedidos %}
             <div class="table-responsive panel-scroll">
@@ -211,7 +216,7 @@
                     <tbody>
                         {% for p in ultimos_pedidos %}
                             <tr>
-                                <td><a href="{% url 'pedidos:detalle' p.id_pedido %}"><strong>{{ p.numero_factura }}</strong></a></td>
+                                <td><a href="{% url 'pedidos:detalle' p.id_pedido %}?from=inicio"><strong>{{ p.numero_factura }}</strong></a></td>
                                 <td>{{ p.mesero.get_username }}</td>
                                 <td>
                                     {% if p.mesa %}Mesa {{ p.mesa.numero_mesa }}
@@ -267,7 +272,7 @@
     <div class="panel">
         <div class="d-flex justify-content-between align-items-center mb-2">
             <h5><i class="fas fa-clock-rotate-left me-2 text-muted"></i>Mis últimos pedidos</h5>
-            <a href="{% url 'pedidos:lista' %}" class="btn btn-sm btn-outline-primary">Ver todos</a>
+            <a href="{% url 'pedidos:lista' %}?from=inicio" class="btn btn-sm btn-outline-primary">Ver todos</a>
         </div>
         {% if ultimos_pedidos %}
             <div class="table-responsive">
@@ -276,7 +281,7 @@
                     <tbody>
                         {% for p in ultimos_pedidos %}
                             <tr>
-                                <td><a href="{% url 'pedidos:detalle' p.id_pedido %}"><strong>{{ p.numero_factura }}</strong></a></td>
+                                <td><a href="{% url 'pedidos:detalle' p.id_pedido %}?from=inicio"><strong>{{ p.numero_factura }}</strong></a></td>
                                 <td>{% if p.mesa %}Mesa {{ p.mesa.numero_mesa }}{% else %}{{ p.get_tipo_display }}{% endif %}</td>
                                 <td><span class="badge bg-secondary badge-estado">{{ p.get_estado_display }}</span></td>
                                 <td class="text-end fw-semibold">${{ p.total|floatformat:0|intcomma }}</td>

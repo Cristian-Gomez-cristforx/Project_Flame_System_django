@@ -5,10 +5,10 @@
 
 {% block content %}
 <div class="page-header">
-    <h1><i class="fas fa-tags text-secondary me-2"></i> Categorías</h1>
-    <a href="{% url 'inventario:crear_categoria' %}" class="btn btn-primary">
+    <h1><i class="fas fa-tags me-2"></i> Categorías</h1>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearCategoriaModal">
         <i class="fas fa-plus"></i> Nueva categoría
-    </a>
+    </button>
 </div>
 
 <div class="mb-3">
@@ -91,6 +91,47 @@
     </div>
 </div>
 
+<div class="modal fade" id="crearCategoriaModal" tabindex="-1" aria-labelledby="crearCategoriaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'inventario:crear_categoria' %}" id="crear-categoria-form" novalidate>
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crearCategoriaModalLabel">
+                        <i class="fas fa-tags text-secondary me-2"></i>Nueva categoría
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="crear-categoria-nombre">Nombre de la categoría <span class="text-danger">*</span></label>
+                        <input type="text" name="nombre_categoria" id="crear-categoria-nombre"
+                               class="form-control" maxlength="80" required
+                               pattern="[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+"
+                               title="Solo letras y espacios">
+                        <div class="form-text small">Solo letras y espacios.</div>
+                        <div class="text-danger small mt-1 d-none" id="crear-categoria-error-nombre"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="crear-categoria-tipo">Tipo <span class="text-danger">*</span></label>
+                        <select name="tipo" id="crear-categoria-tipo" class="form-select" required>
+                            <option value="">-- Seleccione un tipo --</option>
+                            {% for value, label in tipos %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="text-danger small mt-1 d-none" id="crear-categoria-error-tipo"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="editarCategoriaModal" tabindex="-1" aria-labelledby="editarCategoriaModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
@@ -124,6 +165,70 @@
 {% block extra_js %}
 <script>
 (function () {
+    const modalEl = document.getElementById('crearCategoriaModal');
+    if (!modalEl) return;
+
+    const form = document.getElementById('crear-categoria-form');
+    const inputNombre = document.getElementById('crear-categoria-nombre');
+    const selectTipo = document.getElementById('crear-categoria-tipo');
+    const errorNombre = document.getElementById('crear-categoria-error-nombre');
+    const errorTipo = document.getElementById('crear-categoria-error-tipo');
+    const soloLetras = /^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+$/;
+
+    const nombresExistentes = new Set();
+    document.querySelectorAll('.open-editar-categoria').forEach(btn => {
+        nombresExistentes.add((btn.dataset.catNombre || '').trim().toLowerCase());
+    });
+
+    inputNombre.addEventListener('input', () => {
+        const limpio = inputNombre.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü ]/g, '');
+        if (limpio !== inputNombre.value) {
+            inputNombre.value = limpio;
+        }
+    });
+
+    selectTipo.addEventListener('change', () => {
+        if (selectTipo.value) {
+            errorTipo.classList.add('d-none');
+            errorTipo.textContent = '';
+        }
+    });
+
+    form.addEventListener('submit', (e) => {
+        let hayError = false;
+        errorNombre.classList.add('d-none'); errorNombre.textContent = '';
+        errorTipo.classList.add('d-none'); errorTipo.textContent = '';
+
+        const raw = inputNombre.value.replace(/\s+/g, ' ').trim();
+        if (!raw) {
+            errorNombre.textContent = 'El nombre no puede estar vacío.';
+            errorNombre.classList.remove('d-none');
+            hayError = true;
+        } else if (!soloLetras.test(raw)) {
+            errorNombre.textContent = 'El nombre solo permite letras y espacios.';
+            errorNombre.classList.remove('d-none');
+            hayError = true;
+        } else if (nombresExistentes.has(raw.toLowerCase())) {
+            errorNombre.textContent = `La categoría "${raw}" ya existe.`;
+            errorNombre.classList.remove('d-none');
+            hayError = true;
+        }
+
+        if (!selectTipo.value) {
+            errorTipo.textContent = 'Debe elegir un tipo.';
+            errorTipo.classList.remove('d-none');
+            hayError = true;
+        }
+
+        if (hayError) {
+            e.preventDefault();
+            return;
+        }
+        inputNombre.value = raw;
+    });
+})();
+
+(function () {
     const modalEl = document.getElementById('editarCategoriaModal');
     if (!modalEl) return;
 
@@ -136,6 +241,13 @@
     document.querySelectorAll('.open-editar-categoria').forEach(btn => {
         const nombre = (btn.dataset.catNombre || '').trim().toLowerCase();
         nombresExistentes.set(btn.dataset.catUrl, nombre);
+    });
+
+    input.addEventListener('input', () => {
+        const limpio = input.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü ]/g, '');
+        if (limpio !== input.value) {
+            input.value = limpio;
+        }
     });
 
     let urlActual = '';

@@ -44,7 +44,54 @@ body {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.05) transparent;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
+    transition: scrollbar-color 0.35s ease;
+}
+
+.sidebar:hover,
+.sidebar:focus-within {
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-button,
+.sidebar::-webkit-scrollbar-button:start,
+.sidebar::-webkit-scrollbar-button:end,
+.sidebar::-webkit-scrollbar-button:vertical:start:decrement,
+.sidebar::-webkit-scrollbar-button:vertical:end:increment,
+.sidebar::-webkit-scrollbar-button:vertical:start:increment,
+.sidebar::-webkit-scrollbar-button:vertical:end:decrement,
+.sidebar::-webkit-scrollbar-corner {
+    display: none !important;
+    background: transparent !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 999px;
+    transition: background-color 0.35s ease;
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb,
+.sidebar:focus-within::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--flame-accent);
 }
 
 .sidebar h3 {

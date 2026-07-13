@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Reportes de estabilidad{% endblock %}
+{% block nav_reportes_estabilidad %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-heart-pulse me-2"></i> Reportes de estabilidad</h1>
+</div>
+
+{% include 'reportes/_filtro_mes.html' %}
+
+<p class="text-muted-sm">
+    {% if filtrado %}
+        Rango: <strong>{{ desde_mes|date:"F Y"|capfirst }}</strong> a <strong>{{ hasta_mes|date:"F Y"|capfirst }}</strong>
+    {% else %}
+        Rango: <strong>{{ desde_mes|date:"F Y"|capfirst }}</strong> a <strong>{{ hasta_mes|date:"F Y"|capfirst }}</strong> (por defecto)
+    {% endif %}
+</p>
+
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <i class="fas fa-calendar-alt me-1"></i> Ventas mensuales
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="table-layout: fixed;">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Mes</th>
+                        <th class="text-center" style="width: 25%;">Producto más vendido</th>
+                        <th class="text-center" style="width: 25%;">Cantidad de ventas</th>
+                        <th class="text-end" style="width: 25%;">Total vendido</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in ventas_mensuales %}
+                    <tr>
+                        <td>{{ fila.mes|date:"F Y"|capfirst }}</td>
+                        <td class="text-center">
+                            {% if fila.top_producto %}
+                                {{ fila.top_producto.nombre }}
+                                <span class="fw-bold">({{ fila.top_producto.unidades }})</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center fw-bold">{{ fila.cantidad }}</td>
+                        <td class="text-end text-success">${{ fila.total|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">
+                            Aún no hay ventas registradas.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-header">
+        <i class="fas fa-trophy me-1"></i> Producto más vendido del rango
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th class="text-center">Unidades vendidas</th>
+                        <th class="text-end">Ingresos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if producto_top %}
+                    <tr>
+                        <td>{{ producto_top.producto__nombre_producto }}</td>
+                        <td class="text-center fw-bold">{{ producto_top.unidades }}</td>
+                        <td class="text-end text-success">${{ producto_top.ingresos|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center text-muted py-4">
+                            No hay ventas de productos en este rango.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -9,7 +9,7 @@ from django.contrib.auth.views import LoginView
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
-from django.db.models import DecimalField, Q, Sum, Value
+from django.db.models import DecimalField, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -58,16 +58,9 @@ def logout_view(request):
     return redirect('login_modify:login')
 
 
-@login_required(login_url='login_modify:login')
-def dashboard(request):
-    """Panel principal: arma los KPIs, últimos pedidos y alertas según el rol del usuario."""
+def construir_contexto_dashboard(request):
+    """Construye el contexto compartido del dashboard: KPIs, últimos pedidos y filtro de fechas según el rol."""
     perfil = getattr(request.user, 'perfil', None)
-
-    if perfil and not perfil.activo and not request.user.is_superuser:
-        django_logout(request)
-        messages.error(request, 'Tu cuenta está inactiva. Contacta al administrador.')
-        return redirect('login_modify:login')
-
     rol = perfil.rol if perfil else Perfil.Rol.ADMIN
     es_admin = request.user.is_superuser or (perfil and perfil.es_admin)
     es_mesero = perfil and perfil.es_mesero
@@ -104,7 +97,6 @@ def dashboard(request):
     alertas_stock = []
 
     if es_admin:
-        from django.db.models import F
         from Gestion_Pedidos.models import (
             DetallePedidoBebida,
             DetallePedidoInsumo,
@@ -125,27 +117,30 @@ def dashboard(request):
             pedido__in=finalizados_hoy
         ).aggregate(total=Coalesce(Sum('subtotal'), Value(Decimal('0')), output_field=DecimalField()))['total']
 
-        costo_insumos_productos = DetallePedidoInsumo.objects.filter(
+        inversion_insumos = DetallePedidoInsumo.objects.filter(
             detalle_producto__pedido__in=finalizados_hoy,
             usar=True,
         ).aggregate(
             total=Coalesce(
-                Sum(F('cantidad_requerida') * F('precio_insumo') * F('detalle_producto__cantidad')),
+                Sum(
+                    F('cantidad_requerida') * F('detalle_producto__cantidad') * F('precio_insumo')
+                ),
                 Value(Decimal('0')),
                 output_field=DecimalField(),
             )
         )['total']
-        from Inventario.models import Bebida
-        costo_bebidas = Bebida.objects.aggregate(
+        inversion_bebidas = DetallePedidoBebida.objects.filter(
+            pedido__in=finalizados_hoy,
+        ).aggregate(
             total=Coalesce(
-                Sum(F('precio_compra') * F('stock_maximo')),
+                Sum(F('cantidad') * F('bebida__precio_unitario_compra')),
                 Value(Decimal('0')),
                 output_field=DecimalField(),
             )
         )['total']
 
         ingresos = total_productos + total_bebidas
-        ganancia = ingresos - (costo_insumos_productos + costo_bebidas)
+        ganancia = ingresos - (inversion_insumos + inversion_bebidas)
 
         kpis = {
             'ventas_hoy': ingresos,
@@ -153,8 +148,8 @@ def dashboard(request):
             'mesas_ocupadas': mesas_ocupadas,
             'mesas_total': mesas_total,
             'ingresos': ingresos,
-            'inversion_insumos': costo_insumos_productos,
-            'inversion_bebidas': costo_bebidas,
+            'inversion_insumos': inversion_insumos,
+            'inversion_bebidas': inversion_bebidas,
             'ganancia': ganancia,
         }
         ultimos_pedidos = list(
@@ -221,7 +216,7 @@ def dashboard(request):
             'cocinados_hoy': cocinados_hoy,
         }
 
-    context = {
+    return {
         'perfil': perfil,
         'rol': rol,
         'es_admin': es_admin,
@@ -235,7 +230,19 @@ def dashboard(request):
         'desde': desde,
         'hasta': hasta,
     }
-    return render(request, 'auth/dashboard.html', context)
+
+
+@login_required(login_url='login_modify:login')
+def dashboard(request):
+    """Panel principal: verifica el estado del perfil y renderiza el dashboard con el contexto del rol."""
+    perfil = getattr(request.user, 'perfil', None)
+
+    if perfil and not perfil.activo and not request.user.is_superuser:
+        django_logout(request)
+        messages.error(request, 'Tu cuenta está inactiva. Contacta al administrador.')
+        return redirect('login_modify:login')
+
+    return render(request, 'auth/dashboard.html', construir_contexto_dashboard(request))
 
 
 def _buscar_usuario(identificador):

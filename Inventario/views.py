@@ -317,7 +317,7 @@ def crear_merma(request):
     User = get_user_model()
     return render(request, 'temp_inventario/crear_merma.html', {
         'form': form,
-        'insumos': Insumo.objects.all().order_by('nombre_insumo'),
+        'insumos': Insumo.objects.filter(cantidad_insumo__gt=0).order_by('nombre_insumo'),
         'usuarios': User.objects.filter(is_active=True).order_by('username'),
     })
 
@@ -399,17 +399,25 @@ def listar_categorias(request):
 
 @admin_requerido
 def crear_categoria(request):
-    """Alta de una categoría con su tipo (insumo, producto o bebida)."""
-    form = CategoriaForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        try:
-            categoria = form.save()
-            messages.success(request, f'Categoría "{categoria.nombre_categoria}" creada.')
-            return redirect('inventario:listar_categorias')
-        except ValidationError as e:
-            messages.error(request, '; '.join(e.messages))
+    """Alta de una categoría con su tipo (insumo, producto o bebida) desde el modal."""
+    if request.method == 'POST':
+        form = CategoriaForm(request.POST)
+        if form.is_valid():
+            try:
+                categoria = form.save()
+                messages.success(request, f'Categoría "{categoria.nombre_categoria}" creada.')
+            except ValidationError as e:
+                messages.error(request, '; '.join(e.messages))
+        else:
+            errores = []
+            if not form.cleaned_data.get('tipo') and 'tipo' in form.errors:
+                errores.append('Debe elegir un tipo.')
+            for campo, msgs in form.errors.items():
+                for m in msgs:
+                    errores.append(m)
+            messages.error(request, ' '.join(errores) or 'No se pudo crear la categoría.')
 
-    return render(request, 'temp_inventario/crear_categoria.html', {'form': form})
+    return redirect('inventario:listar_categorias')
 
 
 @admin_requerido

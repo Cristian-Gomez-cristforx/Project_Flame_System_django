@@ -6,7 +6,7 @@
 
 {% block content %}
 <div class="page-header">
-    <h1><i class="fas fa-wine-bottle text-info me-2"></i> Listado de Bebidas</h1>
+    <h1><i class="fas fa-wine-bottle me-2"></i> Listado de Bebidas</h1>
     <div>
         <a href="{% url 'inventario:crear_bebida' %}" class="btn btn-info">
             <i class="fas fa-plus"></i> Nueva Bebida
@@ -42,12 +42,14 @@
             {% endfor %}
         </select>
 
-        <button type="submit" class="btn btn-outline-primary">
-            <i class="fas fa-search"></i> Filtrar
-        </button>
         {% if request.GET.q or tamaño_actual or categoria_actual %}
-            <a href="{% url 'inventario:listar_bebidas' %}" class="btn btn-secondary">Limpiar</a>
+            <a href="{{ request.path }}" class="btn btn-outline-secondary" title="Limpiar filtro">
+                <i class="fas fa-xmark"></i>
+            </a>
         {% endif %}
+        <button type="submit" class="btn btn-outline-primary">
+            <i class="fas fa-filter"></i> Filtrar
+        </button>
     </form>
 </div>
 

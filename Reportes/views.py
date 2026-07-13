@@ -13,7 +13,7 @@ from login_modify_django.decorators import admin_requerido
 from Gestion_Pedidos.models import Pedido
 
 from . import services
-from .forms import RangoFechasForm
+from .forms import RangoFechasForm, RangoMesesForm
 
 
 _LOGO_FADEADO_CACHE = None
@@ -77,21 +77,9 @@ def dashboard(request):
 
 @admin_requerido
 def ventas(request):
-    """Reporte detallado de ventas: resumen, top productos, top bebidas y pedidos del rango."""
-    desde, hasta, form = _rango_desde_request(request)
-
-    resumen = services.resumen_ventas(desde, hasta)
-    top_prod = services.top_productos(desde, hasta)
-    top_beb = services.top_bebidas(desde, hasta)
-    pedidos = services.pedidos_por_dia(desde, hasta)
-
-    return render(request, 'reportes/ventas.html', {
-        'form': form,
-        'resumen': resumen,
-        'top_productos': top_prod,
-        'top_bebidas': top_beb,
-        'pedidos': pedidos,
-    })
+    """Reporte de ventas: reutiliza el contexto del dashboard de inicio pero con su propia sección/plantilla."""
+    from login_modify_django.views import construir_contexto_dashboard
+    return render(request, 'reportes/ventas.html', construir_contexto_dashboard(request))
 
 
 @admin_requerido
@@ -103,6 +91,34 @@ def mermas(request):
     return render(request, 'reportes/mermas.html', {
         'form': form,
         'resumen': resumen,
+    })
+
+
+@admin_requerido
+def estabilidad(request):
+    """Reporte de estabilidad: serie mensual de ventas y producto más vendido dentro del rango de meses."""
+    desde_defecto, hasta_defecto = services.rango_meses_por_defecto()
+
+    filtrado = bool(request.GET.get('desde_mes') or request.GET.get('hasta_mes'))
+    form = RangoMesesForm(request.GET or None)
+    if filtrado and form.is_valid():
+        desde_mes = form.cleaned_data['desde_mes']
+        hasta_mes = form.cleaned_data['hasta_mes']
+    else:
+        desde_mes, hasta_mes = desde_defecto, hasta_defecto
+        if not filtrado:
+            form = RangoMesesForm(initial={
+                'desde_mes': desde_defecto.strftime('%Y-%m'),
+                'hasta_mes': hasta_defecto.strftime('%Y-%m'),
+            })
+
+    return render(request, 'reportes/estabilidad.html', {
+        'form': form,
+        'ventas_mensuales': services.ventas_por_mes(desde_mes, hasta_mes),
+        'producto_top': services.producto_mas_vendido_rango(desde_mes, hasta_mes),
+        'desde_mes': desde_mes,
+        'hasta_mes': hasta_mes,
+        'filtrado': filtrado,
     })
 
 

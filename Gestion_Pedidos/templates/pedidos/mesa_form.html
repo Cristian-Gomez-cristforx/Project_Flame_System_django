@@ -6,7 +6,7 @@
 {% block content %}
 <div class="page-header">
     <h1>
-        <i class="fas fa-chair text-secondary me-2"></i>
+        <i class="fas fa-chair me-2"></i>
         {% if modo == 'crear' %}Nueva mesa{% else %}Editar Mesa {{ mesa.numero_mesa }}{% endif %}
     </h1>
     <a href="{% url 'pedidos:mesas' %}" class="btn btn-outline-secondary">

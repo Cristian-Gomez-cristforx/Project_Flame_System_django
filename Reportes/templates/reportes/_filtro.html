@@ -8,9 +8,14 @@
         <label class="form-label">{{ form.hasta.label }}</label>
         {{ form.hasta }}
     </div>
-    <div class="col-md-3">
+    <div class="col-md-3 d-flex gap-2">
+        {% if request.GET.desde or request.GET.hasta %}
+        <a href="{{ request.path }}" class="btn btn-outline-secondary" title="Volver a hoy">
+            <i class="fas fa-xmark"></i>
+        </a>
+        {% endif %}
         <button type="submit" class="btn btn-primary">
-            <i class="fas fa-filter"></i> Aplicar
+            <i class="fas fa-filter"></i> Filtrar
         </button>
     </div>
     {% if form.non_field_errors %}

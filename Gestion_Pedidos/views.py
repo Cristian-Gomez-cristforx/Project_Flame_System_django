@@ -618,10 +618,10 @@ def factura_imagen(request, pedido_id):
 
 @rol_requerido(*ROLES_COCINA)
 def cocina(request):
-    """Tablero de cocina con los pedidos pendientes y en preparación."""
+    """Tablero de cocina con los pedidos ya enviados a cocina (no muestra los pendientes)."""
     pedidos = (
         Pedido.objects
-        .filter(estado__in=[Pedido.EstadoPedido.PENDIENTE, Pedido.EstadoPedido.COCINA])
+        .filter(estado=Pedido.EstadoPedido.COCINA)
         .select_related('mesa')
         .prefetch_related('productos__producto', 'bebidas__bebida')
         .order_by('fecha_creacion')
