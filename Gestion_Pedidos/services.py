@@ -1,5 +1,5 @@
 from collections import defaultdict
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -138,12 +138,27 @@ def _validar_stock_suficiente(pedido):
         )
 
 
+def _recalcular_precio_gramo(insumo):
+    if insumo.cantidad_insumo > 0:
+        insumo.precio_gramo = (
+            Decimal(insumo.precio_insumo) / Decimal(insumo.cantidad_insumo)
+        ).quantize(Decimal('0.01'), rounding=ROUND_DOWN)
+    else:
+        insumo.precio_gramo = Decimal('0.00')
+
+
 def _descontar_stock(pedido):
     """Resta del inventario los insumos y bebidas consumidos por el pedido."""
     for insumo_id, cantidad in _consumo_por_insumo(pedido).items():
-        Insumo.objects.filter(pk=insumo_id).update(
-            cantidad_insumo=F('cantidad_insumo') - cantidad,
-        )
+        insumo = Insumo.objects.get(pk=insumo_id)
+        costo_consumido = (
+            Decimal(cantidad) * insumo.precio_gramo
+        ).quantize(Decimal('1'), rounding=ROUND_DOWN)
+        insumo.cantidad_insumo = max(0, insumo.cantidad_insumo - cantidad)
+        insumo.precio_insumo = max(Decimal('0'), Decimal(insumo.precio_insumo) - costo_consumido)
+        _recalcular_precio_gramo(insumo)
+        insumo.save(update_fields=['cantidad_insumo', 'precio_insumo', 'precio_gramo'])
+
     for bebida_id, cantidad in _consumo_por_bebida(pedido).items():
         Bebida.objects.filter(pk=bebida_id).update(
             cantidad_bebida=F('cantidad_bebida') - cantidad,
@@ -153,9 +168,15 @@ def _descontar_stock(pedido):
 def _restaurar_stock(pedido):
     """Devuelve al inventario los insumos y bebidas de un pedido cancelado."""
     for insumo_id, cantidad in _consumo_por_insumo(pedido).items():
-        Insumo.objects.filter(pk=insumo_id).update(
-            cantidad_insumo=F('cantidad_insumo') + cantidad,
-        )
+        insumo = Insumo.objects.get(pk=insumo_id)
+        costo_restaurado = (
+            Decimal(cantidad) * insumo.precio_gramo
+        ).quantize(Decimal('1'), rounding=ROUND_DOWN)
+        insumo.cantidad_insumo = insumo.cantidad_insumo + cantidad
+        insumo.precio_insumo = Decimal(insumo.precio_insumo) + costo_restaurado
+        _recalcular_precio_gramo(insumo)
+        insumo.save(update_fields=['cantidad_insumo', 'precio_insumo', 'precio_gramo'])
+
     for bebida_id, cantidad in _consumo_por_bebida(pedido).items():
         Bebida.objects.filter(pk=bebida_id).update(
             cantidad_bebida=F('cantidad_bebida') + cantidad,
