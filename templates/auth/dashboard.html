@@ -121,11 +121,6 @@
 {% if es_admin or es_mesero %}
 <div class="page-header mb-3">
     <h1><i class="fas fa-cash-register me-2"></i> Reportes de ventas</h1>
-    {% if es_admin %}
-    <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalReportePDFVentas">
-        <i class="fas fa-file-pdf me-1"></i> Descargar PDF pedidos
-    </button>
-    {% endif %}
 </div>
 <div class="filtro-fechas-card">
     <form method="get">
@@ -337,66 +332,5 @@
             <i class="fas fa-utensils me-2"></i> Ir a cocina
         </a>
     </div>
-{% endif %}
-
-{% if es_admin %}
-<div class="modal fade" id="modalReportePDFVentas" tabindex="-1" aria-labelledby="modalReportePDFVentasLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="modalReportePDFVentasLabel">
-                    <i class="fas fa-file-pdf me-2"></i> Descargar reporte PDF
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <form id="formReportePDFVentas" method="get" action="{% url 'reportes:descargar_pedidos' %}">
-                <div class="modal-body">
-                    <p class="text-muted-sm mb-3">Selecciona el rango de fechas para el PDF.</p>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="vpdf_desde" class="form-label">Desde</label>
-                            <input type="date" class="form-control" id="vpdf_desde" name="desde" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="vpdf_hasta" class="form-label">Hasta</label>
-                            <input type="date" class="form-control" id="vpdf_hasta" name="hasta" required>
-                        </div>
-                    </div>
-                    <div id="vpdfError" class="alert alert-danger mt-3 mb-0 d-none"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success" id="btnVPDF">
-                        <i class="fas fa-download me-1"></i> Descargar
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-<script>
-(function () {
-    const hoyStr = new Date().toISOString().slice(0, 10);
-    const d = document.getElementById('vpdf_desde');
-    const h = document.getElementById('vpdf_hasta');
-    const err = document.getElementById('vpdfError');
-    const btn = document.getElementById('btnVPDF');
-    if (!d) return;
-    d.max = hoyStr; h.max = hoyStr;
-    function validar() {
-        if (d.value && d.value > hoyStr) { mostrar('La fecha "Desde" no puede ser posterior a hoy.'); return false; }
-        if (h.value && h.value > hoyStr) { mostrar('La fecha "Hasta" no puede ser posterior a hoy.'); return false; }
-        if (d.value && h.value && d.value > h.value) { mostrar('La fecha "Desde" no puede ser posterior a "Hasta".'); return false; }
-        ocultar(); return true;
-    }
-    function mostrar(msg) { err.textContent = msg; err.classList.remove('d-none'); btn.disabled = true; }
-    function ocultar() { err.classList.add('d-none'); btn.disabled = false; }
-    d.addEventListener('change', validar);
-    h.addEventListener('change', validar);
-    document.getElementById('formReportePDFVentas').addEventListener('submit', function (e) {
-        if (!validar()) e.preventDefault();
-    });
-})();
-</script>
 {% endif %}
 {% endblock %}

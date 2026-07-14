@@ -219,7 +219,7 @@ def descargar_reporte_pedidos(request):
 
     pedidos = list(
         Pedido.objects
-        .filter(fecha_creacion__range=(inicio, fin))
+        .filter(fecha_creacion__range=(inicio, fin), estado__in=[Pedido.EstadoPedido.FINALIZADO, Pedido.EstadoPedido.CANCELADO])
         .select_related('mesa', 'mesero')
         .prefetch_related('productos', 'bebidas')
         .order_by('-fecha_creacion')
