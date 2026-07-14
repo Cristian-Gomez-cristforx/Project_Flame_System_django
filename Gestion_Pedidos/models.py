@@ -2,8 +2,11 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from Inventario.models import (Producto,Bebida,Insumo)
+
+
+PRECIO_MAX = 10_000_000
 
 class Mesa(models.Model):
     numero_mesa = models.PositiveIntegerField(unique=True)
@@ -51,8 +54,8 @@ class Pedido(models.Model):
          null=True,
          blank=True,
          related_name='pedidos')
-    nombre_cliente = models.CharField(max_length=70,blank=True,verbose_name="Nombre del cliente")
-    telefono_cliente = models.CharField(max_length=20,blank=True,verbose_name="Teléfono del cliente")
+    nombre_cliente = models.CharField(max_length=100,blank=True,verbose_name="Nombre del cliente")
+    telefono_cliente = models.CharField(max_length=14,blank=True,verbose_name="Teléfono del cliente")
     minutos_recogida = models.PositiveIntegerField(
         null=True,
         blank=True,
@@ -113,11 +116,11 @@ class DetallePedidoProducto(models.Model):
 
     producto = models.ForeignKey(Producto,on_delete=models.PROTECT)
 
-    cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(99)])
 
-    precio_unitario = models.DecimalField(max_digits=10,decimal_places=0,validators=[MinValueValidator(0)])
+    precio_unitario = models.DecimalField(max_digits=10,decimal_places=0,validators=[MinValueValidator(0), MaxValueValidator(PRECIO_MAX)])
 
-    subtotal = models.DecimalField(max_digits=10,decimal_places=0,validators=[MinValueValidator(0)])
+    subtotal = models.DecimalField(max_digits=12,decimal_places=0,validators=[MinValueValidator(0)])
 
     def save(self, *args, **kwargs):
 
@@ -137,11 +140,11 @@ class DetallePedidoBebida(models.Model):
 
     bebida = models.ForeignKey(Bebida,on_delete=models.PROTECT)
 
-    cantidad = models.PositiveIntegerField()
+    cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(99)])
 
-    precio_unitario = models.DecimalField(max_digits=10,decimal_places=2,validators=[MinValueValidator(0)])
+    precio_unitario = models.DecimalField(max_digits=10,decimal_places=2,validators=[MinValueValidator(0), MaxValueValidator(PRECIO_MAX)])
 
-    subtotal = models.DecimalField(max_digits=10,decimal_places=2,validators=[MinValueValidator(0)])
+    subtotal = models.DecimalField(max_digits=12,decimal_places=2,validators=[MinValueValidator(0)])
 
     def save(self, *args, **kwargs):
 
@@ -162,7 +165,7 @@ class DetallePedidoInsumo(models.Model):
 
     cantidad_requerida = models.DecimalField(max_digits=10,decimal_places=2,validators=[MinValueValidator(1)])
 
-    precio_insumo = models.DecimalField(max_digits=10,decimal_places=2,validators=[MinValueValidator(1)])
+    precio_insumo = models.DecimalField(max_digits=10,decimal_places=2,validators=[MinValueValidator(1), MaxValueValidator(PRECIO_MAX)])
 
     usar = models.BooleanField(default=True)
 

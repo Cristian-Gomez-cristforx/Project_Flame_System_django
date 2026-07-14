@@ -163,6 +163,7 @@ def crear_producto(request):
     form = ProductoForm(request.POST or None)
     formset = DetalleRecetaFormSet(request.POST or None, prefix='detalles')
 
+    error_costo = None
     if request.method == 'POST' and form.is_valid() and formset.is_valid():
         try:
             with transaction.atomic():
@@ -174,12 +175,13 @@ def crear_producto(request):
             messages.success(request, f'Producto "{producto.nombre_producto}" y su receta creados correctamente.')
             return redirect('inventario:listar_productos')
         except ValidationError as e:
-            messages.error(request, '; '.join(e.messages))
+            error_costo = e.messages[0] if e.messages else str(e)
 
     return render(request, 'temp_inventario/crear_producto.html', {
         'form': form,
         'formset': formset,
         'categorias': Categoria.objects.filter(tipo=Categoria.Tipo.PRODUCTO).order_by('nombre_categoria'),
+        'error_costo': error_costo,
     })
 
 
@@ -194,6 +196,7 @@ def editar_producto(request, id):
     form = ProductoForm(request.POST or None, instance=producto_obj)
     formset = DetalleRecetaFormSet(request.POST or None, instance=receta_obj, prefix='detalles')
 
+    error_costo = None
     if request.method == 'POST' and form.is_valid() and formset.is_valid():
         try:
             with transaction.atomic():
@@ -204,13 +207,14 @@ def editar_producto(request, id):
             messages.success(request, f'Producto "{producto.nombre_producto}" actualizado.')
             return redirect('inventario:listar_productos')
         except ValidationError as e:
-            messages.error(request, '; '.join(e.messages))
+            error_costo = e.messages[0] if e.messages else str(e)
 
     return render(request, 'temp_inventario/editar_producto.html', {
         'form': form,
         'formset': formset,
         'producto': producto_obj,
         'categorias': Categoria.objects.filter(tipo=Categoria.Tipo.PRODUCTO).order_by('nombre_categoria'),
+        'error_costo': error_costo,
     })
 
 

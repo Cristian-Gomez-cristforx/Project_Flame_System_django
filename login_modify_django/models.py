@@ -26,8 +26,8 @@ class Perfil(models.Model):
         choices=Rol.choices,
         default=Rol.MESERO,
     )
-    telefono = models.CharField(max_length=20, blank=True)
-    documento = models.CharField(max_length=30, blank=True)
+    telefono = models.CharField(max_length=14, blank=True)
+    documento = models.CharField(max_length=15, blank=True)
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 

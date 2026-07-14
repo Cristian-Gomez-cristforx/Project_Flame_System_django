@@ -34,7 +34,7 @@ class CategoriaForm(forms.ModelForm):
         model = Categoria
         fields = ['nombre_categoria', 'tipo']
         widgets = {
-            'nombre_categoria': forms.TextInput(attrs=BOOTSTRAP_INPUT),
+            'nombre_categoria': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'maxlength': '100'}),
             'tipo': forms.Select(attrs=BOOTSTRAP_SELECT),
         }
 
@@ -46,6 +46,7 @@ class InsumoForm(forms.ModelForm):
         widget=forms.TextInput(attrs={
             **BOOTSTRAP_INPUT,
             'placeholder': 'Escriba una nueva categoría',
+            'maxlength': '100',
         }),
     )
 
@@ -60,12 +61,12 @@ class InsumoForm(forms.ModelForm):
             'cantidad_a_agregar',
         ]
         widgets = {
-            'nombre_insumo': forms.TextInput(attrs=BOOTSTRAP_INPUT),
+            'nombre_insumo': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'maxlength': '100'}),
             'cantidad_insumo': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 0}),
             'unidad_medida': forms.Select(attrs=BOOTSTRAP_SELECT),
-            'precio_insumo': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
+            'precio_insumo': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1, 'max': 10000000}),
             'categoria': forms.Select(attrs=BOOTSTRAP_SELECT),
-            'cantidad_a_agregar': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 0, 'step': '0.01'}),
+            'cantidad_a_agregar': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 0, 'step': 1}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -120,6 +121,7 @@ class ProductoForm(forms.ModelForm):
         widget=forms.TextInput(attrs={
             **BOOTSTRAP_INPUT,
             'placeholder': 'Nombre de la nueva categoría',
+            'maxlength': '100',
         }),
     )
 
@@ -132,8 +134,8 @@ class ProductoForm(forms.ModelForm):
             'activo',
         ]
         widgets = {
-            'nombre_producto': forms.TextInput(attrs=BOOTSTRAP_INPUT),
-            'precio_producto': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
+            'nombre_producto': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'maxlength': '100'}),
+            'precio_producto': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1, 'max': 10000000}),
             'categoria': forms.Select(attrs=BOOTSTRAP_SELECT),
             'activo': forms.CheckboxInput(attrs=BOOTSTRAP_CHECK),
         }
@@ -177,6 +179,7 @@ class BebidaForm(forms.ModelForm):
         widget=forms.TextInput(attrs={
             **BOOTSTRAP_INPUT,
             'placeholder': 'Nombre de la nueva categoría',
+            'maxlength': '100',
         }),
     )
 
@@ -192,11 +195,11 @@ class BebidaForm(forms.ModelForm):
             'cantidad_a_agregar',
         ]
         widgets = {
-            'nombre_bebida': forms.TextInput(attrs=BOOTSTRAP_INPUT),
+            'nombre_bebida': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'maxlength': '100'}),
             'tamaño_bebida': forms.Select(attrs=BOOTSTRAP_SELECT),
             'cantidad_bebida': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
-            'precio_compra': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
-            'precio_venta': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
+            'precio_compra': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1, 'max': 10000000}),
+            'precio_venta': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1, 'max': 10000000}),
             'categoria': forms.Select(attrs=BOOTSTRAP_SELECT),
             'cantidad_a_agregar': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 0, 'step': 1}),
         }
@@ -258,7 +261,11 @@ class DetalleRecetaForm(forms.ModelForm):
         fields = ['insumo', 'cantidad_requerida']
         widgets = {
             'insumo': forms.Select(attrs=BOOTSTRAP_SELECT),
-            'cantidad_requerida': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
+            'cantidad_requerida': forms.NumberInput(attrs={
+                'class': 'form-control solo-enteros',
+                'min': 1, 'max': 5000, 'step': 1,
+                'inputmode': 'numeric', 'pattern': r'\d*',
+            }),
         }
 
     def __init__(self, *args, **kwargs):

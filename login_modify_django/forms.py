@@ -16,7 +16,20 @@ solo_letras = RegexValidator(
     message='Este campo solo debe contener letras.',
 )
 
-TELEFONO_LEN = 10
+solo_usuario = RegexValidator(
+    regex=r'^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ0-9]+$',
+    message='El usuario solo admite letras y números.',
+)
+
+solo_telefono = RegexValidator(
+    regex=r'^\+\d{2}\d+$',
+    message='El teléfono debe iniciar con + y el código de país (ej: +57...).',
+)
+
+TELEFONO_MIN = 13
+TELEFONO_MAX = 14
+TELEFONO_LEN = TELEFONO_MAX  # compat: se conserva para el maxlength HTML
+TELEFONO_PLACEHOLDER = 'ej: +573001234567'
 DOCUMENTO_MIN = 8
 DOCUMENTO_MAX = 10
 
@@ -43,6 +56,18 @@ def _validar_email_unico(email, instance=None):
     if qs.exists():
         raise forms.ValidationError('Ya existe un usuario con este correo.')
     return email
+
+
+def _validar_telefono_unico(telefono, instance=None):
+    telefono = (telefono or '').strip()
+    if not telefono:
+        return telefono
+    qs = Perfil.objects.filter(telefono=telefono)
+    if instance and instance.pk:
+        qs = qs.exclude(usuario__pk=instance.pk)
+    if qs.exists():
+        raise forms.ValidationError('Ya existe un usuario con este teléfono.')
+    return telefono
 
 
 def _validar_documento_unico(documento, instance=None):
@@ -86,11 +111,17 @@ class UsuarioCreateForm(UserCreationForm):
     telefono = forms.CharField(
         required=False,
         validators=[
-            solo_numeros,
-            MinLengthValidator(TELEFONO_LEN, f'El teléfono debe tener exactamente {TELEFONO_LEN} dígitos.'),
-            MaxLengthValidator(TELEFONO_LEN, f'El teléfono debe tener exactamente {TELEFONO_LEN} dígitos.'),
+            solo_telefono,
+            MinLengthValidator(TELEFONO_MIN, f'El teléfono debe tener entre {TELEFONO_MIN} y {TELEFONO_MAX} caracteres.'),
+            MaxLengthValidator(TELEFONO_MAX, f'El teléfono debe tener entre {TELEFONO_MIN} y {TELEFONO_MAX} caracteres.'),
         ],
-        widget=forms.TextInput(attrs={**NUMERIC_ATTRS, 'maxlength': str(TELEFONO_LEN)}),
+        widget=forms.TextInput(attrs={
+            'class': 'form-control solo-telefono',
+            'inputmode': 'tel',
+            'pattern': r'\+\d{12,13}',
+            'maxlength': str(TELEFONO_MAX),
+            'placeholder': TELEFONO_PLACEHOLDER,
+        }),
         label='Teléfono',
     )
     documento = forms.CharField(
@@ -100,7 +131,7 @@ class UsuarioCreateForm(UserCreationForm):
             MinLengthValidator(DOCUMENTO_MIN, f'El documento debe tener entre {DOCUMENTO_MIN} y {DOCUMENTO_MAX} dígitos.'),
             MaxLengthValidator(DOCUMENTO_MAX, f'El documento debe tener entre {DOCUMENTO_MIN} y {DOCUMENTO_MAX} dígitos.'),
         ],
-        widget=forms.TextInput(attrs={**NUMERIC_ATTRS, 'maxlength': str(DOCUMENTO_MAX)}),
+        widget=forms.TextInput(attrs={**NUMERIC_ATTRS, 'class': 'form-control solo-enteros', 'maxlength': str(DOCUMENTO_MAX)}),
         label='Documento',
     )
 
@@ -116,12 +147,28 @@ class UsuarioCreateForm(UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for name in ('username', 'first_name', 'last_name', 'email', 'password1', 'password2'):
+        for name in ('email', 'password1', 'password2'):
             if name in self.fields:
                 self.fields[name].widget.attrs.setdefault('class', 'form-control')
+        self.fields['username'].widget.attrs.update({
+            'class': 'form-control solo-username',
+            'maxlength': '50',
+        })
+        self.fields['first_name'].widget.attrs.update({
+            'class': 'form-control solo-letras',
+            'maxlength': '50',
+        })
+        self.fields['last_name'].widget.attrs.update({
+            'class': 'form-control solo-letras',
+            'maxlength': '50',
+        })
+        self.fields['username'].max_length = 50
+        self.fields['first_name'].max_length = 50
+        self.fields['last_name'].max_length = 50
         self.fields['email'].required = True
         self.fields['first_name'].required = True
         self.fields['last_name'].required = True
+        self.fields['username'].validators.append(solo_usuario)
         self.fields['first_name'].validators.append(solo_letras)
         self.fields['last_name'].validators.append(solo_letras)
 
@@ -130,6 +177,9 @@ class UsuarioCreateForm(UserCreationForm):
 
     def clean_documento(self):
         return _validar_documento_unico(self.cleaned_data.get('documento'), self.instance)
+
+    def clean_telefono(self):
+        return _validar_telefono_unico(self.cleaned_data.get('telefono'), self.instance)
 
     def save(self, commit=True):
         user = super().save(commit=commit)
@@ -151,11 +201,17 @@ class UsuarioEditForm(forms.ModelForm):
     telefono = forms.CharField(
         required=False,
         validators=[
-            solo_numeros,
-            MinLengthValidator(TELEFONO_LEN, f'El teléfono debe tener exactamente {TELEFONO_LEN} dígitos.'),
-            MaxLengthValidator(TELEFONO_LEN, f'El teléfono debe tener exactamente {TELEFONO_LEN} dígitos.'),
+            solo_telefono,
+            MinLengthValidator(TELEFONO_MIN, f'El teléfono debe tener entre {TELEFONO_MIN} y {TELEFONO_MAX} caracteres.'),
+            MaxLengthValidator(TELEFONO_MAX, f'El teléfono debe tener entre {TELEFONO_MIN} y {TELEFONO_MAX} caracteres.'),
         ],
-        widget=forms.TextInput(attrs={**NUMERIC_ATTRS, 'maxlength': str(TELEFONO_LEN)}),
+        widget=forms.TextInput(attrs={
+            'class': 'form-control solo-telefono',
+            'inputmode': 'tel',
+            'pattern': r'\+\d{12,13}',
+            'maxlength': str(TELEFONO_MAX),
+            'placeholder': TELEFONO_PLACEHOLDER,
+        }),
         label='Teléfono',
     )
     documento = forms.CharField(
@@ -165,7 +221,7 @@ class UsuarioEditForm(forms.ModelForm):
             MinLengthValidator(DOCUMENTO_MIN, f'El documento debe tener entre {DOCUMENTO_MIN} y {DOCUMENTO_MAX} dígitos.'),
             MaxLengthValidator(DOCUMENTO_MAX, f'El documento debe tener entre {DOCUMENTO_MIN} y {DOCUMENTO_MAX} dígitos.'),
         ],
-        widget=forms.TextInput(attrs={**NUMERIC_ATTRS, 'maxlength': str(DOCUMENTO_MAX)}),
+        widget=forms.TextInput(attrs={**NUMERIC_ATTRS, 'class': 'form-control solo-enteros', 'maxlength': str(DOCUMENTO_MAX)}),
         label='Documento',
     )
     activo = forms.BooleanField(
@@ -184,17 +240,21 @@ class UsuarioEditForm(forms.ModelForm):
             'email': 'Correo electrónico',
         }
         widgets = {
-            'username': forms.TextInput(attrs=BOOTSTRAP_INPUT),
-            'first_name': forms.TextInput(attrs=BOOTSTRAP_INPUT),
-            'last_name': forms.TextInput(attrs=BOOTSTRAP_INPUT),
+            'username': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'class': 'form-control solo-username', 'maxlength': '50'}),
+            'first_name': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'class': 'form-control solo-letras', 'maxlength': '50'}),
+            'last_name': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'class': 'form-control solo-letras', 'maxlength': '50'}),
             'email': forms.EmailInput(attrs=BOOTSTRAP_INPUT),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['username'].max_length = 50
+        self.fields['first_name'].max_length = 50
+        self.fields['last_name'].max_length = 50
         self.fields['email'].required = True
         self.fields['first_name'].required = True
         self.fields['last_name'].required = True
+        self.fields['username'].validators.append(solo_usuario)
         self.fields['first_name'].validators.append(solo_letras)
         self.fields['last_name'].validators.append(solo_letras)
         if self.instance and self.instance.pk:
@@ -210,6 +270,9 @@ class UsuarioEditForm(forms.ModelForm):
 
     def clean_documento(self):
         return _validar_documento_unico(self.cleaned_data.get('documento'), self.instance)
+
+    def clean_telefono(self):
+        return _validar_telefono_unico(self.cleaned_data.get('telefono'), self.instance)
 
     def save(self, commit=True):
         user = super().save(commit=commit)
@@ -298,7 +361,7 @@ class PerfilForm(forms.ModelForm):
         fields = ('rol', 'telefono', 'documento', 'activo')
         widgets = {
             'rol': forms.Select(attrs=BOOTSTRAP_SELECT),
-            'telefono': forms.TextInput(attrs=BOOTSTRAP_INPUT),
-            'documento': forms.TextInput(attrs=BOOTSTRAP_INPUT),
+            'telefono': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'maxlength': str(TELEFONO_LEN)}),
+            'documento': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'maxlength': str(DOCUMENTO_MAX)}),
             'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

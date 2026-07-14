@@ -24,7 +24,7 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Nombre de la Bebida</label>
-                        <input type="text" name="nombre_bebida" class="form-control solo-letras"
+                        <input type="text" name="nombre_bebida" class="form-control solo-letras" maxlength="100"
                                value="{{ form.nombre_bebida.value|default_if_none:'' }}" required>
                         <div class="field-error text-danger small mt-1" data-for="nombre_bebida">{{ form.nombre_bebida.errors|join:" " }}</div>
                     </div>
@@ -51,14 +51,14 @@
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Compra del Lote</label>
                         <input type="number" name="precio_compra" class="form-control solo-enteros"
-                               min="1" step="1" inputmode="numeric" pattern="\d*"
+                               min="1" max="10000000" step="1" inputmode="numeric" pattern="\d*"
                                value="{{ form.precio_compra.value|default_if_none:'' }}" required>
                         <div class="field-error text-danger small mt-1" data-for="precio_compra">{{ form.precio_compra.errors|join:" " }}</div>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Venta por Unidad</label>
                         <input type="number" name="precio_venta" class="form-control solo-enteros"
-                               min="1" step="1" inputmode="numeric" pattern="\d*"
+                               min="1" max="10000000" step="1" inputmode="numeric" pattern="\d*"
                                value="{{ form.precio_venta.value|default_if_none:'' }}" required>
                         <div class="field-error text-danger small mt-1" data-for="precio_venta">{{ form.precio_venta.errors|join:" " }}</div>
                     </div>
@@ -138,17 +138,36 @@ document.querySelectorAll('.solo-letras').forEach(input => {
             return '';
         },
         tamaño_bebida: v => v ? '' : 'Selecciona un tamaño.',
-        cantidad_bebida: v => (parseInt(v, 10) >= 1) ? '' : 'La cantidad debe ser al menos 1.',
-        precio_compra: v => (parseInt(v, 10) >= 1) ? '' : 'El precio de compra debe ser al menos 1.',
+        cantidad_bebida: v => {
+            if (parseInt(v, 10) < 1) return 'La cantidad debe ser al menos 1.';
+            const compra = parseInt(q('precio_compra').value, 10);
+            if (compra >= 1) {
+                const unitario = compra / parseInt(v, 10);
+                if (Math.round(unitario * 100) / 100 < 0.01) return 'El precio unitario de compra resultaría $0. Aumenta el precio o reduce la cantidad.';
+            }
+            return '';
+        },
+        precio_compra: v => {
+            const n = parseInt(v, 10);
+            if (!(n >= 1)) return 'El precio de compra debe ser al menos 1.';
+            if (n > 10000000) return 'El precio de compra no puede superar 10.000.000.';
+            const cant = parseInt(q('cantidad_bebida').value, 10);
+            if (cant >= 1) {
+                const unitario = n / cant;
+                if (Math.round(unitario * 100) / 100 < 0.01) return 'El precio unitario de compra resultaría $0. Aumenta el precio o reduce la cantidad.';
+            }
+            return '';
+        },
         precio_venta: v => {
             const venta = parseInt(v, 10);
             const compra = parseInt(q('precio_compra').value, 10);
             const cant = parseInt(q('cantidad_bebida').value, 10);
             if (!(venta >= 1)) return 'El precio de venta debe ser al menos 1.';
+            if (venta > 10000000) return 'El precio de venta no puede superar 10.000.000.';
             if (!isNaN(compra) && !isNaN(cant) && cant > 0) {
                 const unitario = compra / cant;
                 if (venta <= unitario) {
-                    return `El precio de venta por unidad debe ser mayor que el costo unitario ($${Math.round(unitario)}).`;
+                    return `El precio de venta por unidad debe ser mayor que el costo unitario ($${Math.round(unitario).toLocaleString('es-CO')}).`;
                 }
             }
             return '';
@@ -164,7 +183,8 @@ document.querySelectorAll('.solo-letras').forEach(input => {
             if (!input) continue;
             const msg = validators[name](input.value);
             if (msg) ok = false;
-            setErr(name, touched.has(name) ? msg : '');
+            // precio_venta siempre muestra su error (depende de otros campos)
+            setErr(name, (touched.has(name) || name === 'precio_venta') ? msg : '');
         }
         return ok;
     }

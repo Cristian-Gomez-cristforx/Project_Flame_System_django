@@ -14,22 +14,30 @@
 
     <div class="card shadow">
         <div class="card-body">
-            <form method="POST" id="insumo-form">
+            <form method="POST" id="insumo-form" novalidate>
                 {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>
+                {% endif %}
 
                 <div class="row">
                     <div class="col-md-12 mb-3">
                         <label class="form-label">Nombre del Insumo</label>
-                        <input type="text" name="nombre_insumo" class="form-control"
+                        <input type="text" name="nombre_insumo" class="form-control solo-letras" maxlength="100"
                                value="{{ insumo.nombre_insumo }}" required>
+                        <div class="field-error text-danger small mt-1" data-for="nombre_insumo">{{ form.nombre_insumo.errors|join:" " }}</div>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Cantidad</label>
-                        <input type="number" name="cantidad_insumo" id="cantidad_insumo" class="form-control"
-                               value="{{ insumo.cantidad_insumo }}" min="1" required>
+                        <input type="number" name="cantidad_insumo" id="cantidad_insumo"
+                               class="form-control solo-enteros"
+                               min="1" step="1" inputmode="numeric" pattern="\d*"
+                               value="{{ insumo.cantidad_insumo }}" required>
+                        <div class="field-error text-danger small mt-1" data-for="cantidad_insumo">{{ form.cantidad_insumo.errors|join:" " }}</div>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Unidad de Medida</label>
@@ -41,11 +49,15 @@
                                 </option>
                             {% endfor %}
                         </select>
+                        <div class="field-error text-danger small mt-1" data-for="unidad_medida">{{ form.unidad_medida.errors|join:" " }}</div>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio</label>
-                        <input type="number" name="precio_insumo" id="precio_insumo" class="form-control"
-                               value="{{ insumo.precio_insumo }}" min="1" required>
+                        <input type="number" name="precio_insumo" id="precio_insumo"
+                               class="form-control solo-enteros"
+                               min="1" max="10000000" step="1" inputmode="numeric" pattern="\d*"
+                               value="{{ insumo.precio_insumo }}" required>
+                        <div class="field-error text-danger small mt-1" data-for="precio_insumo">{{ form.precio_insumo.errors|join:" " }}</div>
                     </div>
                 </div>
 
@@ -66,8 +78,10 @@
                 <div class="row">
                     <div class="col-md-12 mb-3">
                         <label class="form-label">Cantidad a agregar (reabastecer)</label>
-                        <input type="number" name="cantidad_a_agregar" class="form-control"
-                               value="0" min="0" step="0.01">
+                        <input type="number" name="cantidad_a_agregar" id="cantidad_a_agregar"
+                               class="form-control solo-enteros"
+                               value="0" min="0" step="1" inputmode="numeric" pattern="\d*">
+                        <div class="field-error text-danger small mt-1" data-for="cantidad_a_agregar"></div>
                         <small class="text-muted">
                             Suma stock manteniendo el precio unitario actual. No puedes usarlo a la vez que modificas la cantidad actual.
                         </small>
@@ -75,7 +89,7 @@
                 </div>
 
                 <div class="d-flex gap-2 mt-3">
-                    <button type="submit" class="btn btn-warning">
+                    <button type="submit" id="submit-btn" class="btn btn-warning">
                         <i class="fas fa-save"></i> Actualizar Insumo
                     </button>
                     <a href="{% url 'inventario:listar_insumos' %}" class="btn btn-secondary">Cancelar</a>
@@ -88,6 +102,24 @@
 
 {% block extra_js %}
 <script>
+document.querySelectorAll('.solo-enteros').forEach(input => {
+    input.addEventListener('keydown', e => {
+        if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+    });
+    input.addEventListener('input', e => {
+        e.target.value = e.target.value.replace(/[^\d]/g, '');
+    });
+});
+
+const RE_SOLO_LETRAS_INS = /[^A-Za-zÁÉÍÓÚÜáéíóúüÑñ ]+/g;
+document.querySelectorAll('.solo-letras').forEach(input => {
+    input.addEventListener('input', e => {
+        const antes = e.target.value;
+        const limpio = antes.replace(RE_SOLO_LETRAS_INS, '');
+        if (antes !== limpio) e.target.value = limpio;
+    });
+});
+
 (function () {
     const cantidad = document.getElementById('cantidad_insumo');
     const precio = document.getElementById('precio_insumo');
@@ -118,6 +150,95 @@
         el.addEventListener('change', actualizar);
     });
     actualizar();
+})();
+
+(function () {
+    const form = document.getElementById('insumo-form');
+    if (!form) return;
+
+    const RE_NOMBRE_INS = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ ]+$/;
+    const ORIG_CANTIDAD_INS = {{ insumo.cantidad_insumo }};
+
+    const ORIG_CANTIDAD = {{ insumo.cantidad_insumo }};
+
+    const q = (name) => form.querySelector(`[name="${name}"]`);
+    const err = (name) => form.querySelector(`.field-error[data-for="${name}"]`);
+    const setErr = (name, msg) => {
+        const el = err(name);
+        if (!el) return;
+        el.textContent = msg || '';
+        const input = q(name);
+        if (input) input.classList.toggle('is-invalid', !!msg);
+    };
+
+    const validators = {
+        nombre_insumo: v => {
+            const s = v.trim();
+            if (!s) return 'Ingresa el nombre.';
+            if (!RE_NOMBRE_INS.test(s)) return 'El nombre solo permite letras y espacios.';
+            return '';
+        },
+        cantidad_insumo: v => {
+            if (parseInt(v, 10) < 1) return 'La cantidad debe ser al menos 1.';
+            const precio = parseInt(q('precio_insumo').value, 10);
+            if (precio >= 1) {
+                const porUnidad = precio / parseInt(v, 10);
+                if (Math.round(porUnidad * 100) / 100 < 0.01) return 'El precio por unidad resultaría $0. Aumenta el precio o reduce la cantidad.';
+            }
+            return '';
+        },
+        unidad_medida: v => v ? '' : 'Selecciona una unidad.',
+        precio_insumo: v => {
+            const n = parseInt(v, 10);
+            if (!(n >= 1)) return 'El precio debe ser al menos 1.';
+            if (n > 10000000) return 'El precio no puede superar 10.000.000.';
+            const cant = parseInt(q('cantidad_insumo').value, 10);
+            if (cant >= 1) {
+                const porUnidad = n / cant;
+                if (Math.round(porUnidad * 100) / 100 < 0.01) return 'El precio por unidad resultaría $0. Aumenta el precio o reduce la cantidad.';
+            }
+            return '';
+        },
+        cantidad_a_agregar: v => {
+            if (v === '' || v === null) return '';
+            const n = parseInt(v, 10);
+            if (isNaN(n) || n < 0) return 'La cantidad a agregar no puede ser negativa.';
+            if (n > 0) {
+                const cantActual = parseInt(q('cantidad_insumo').value, 10);
+                if (cantActual !== ORIG_CANTIDAD) {
+                    return 'No puedes reabastecer y modificar la cantidad al mismo tiempo.';
+                }
+            }
+            return '';
+        },
+    };
+
+    const touched = new Set();
+
+    function validateAll() {
+        let ok = true;
+        for (const name in validators) {
+            const input = q(name);
+            if (!input) continue;
+            const msg = validators[name](input.value);
+            if (msg) ok = false;
+            setErr(name, touched.has(name) ? msg : '');
+        }
+        return ok;
+    }
+
+    for (const name in validators) {
+        const input = q(name);
+        if (!input) continue;
+        input.addEventListener('input', validateAll);
+        input.addEventListener('change', validateAll);
+        input.addEventListener('blur', validateAll);
+    }
+
+    form.addEventListener('submit', (e) => {
+        for (const name in validators) touched.add(name);
+        if (!validateAll()) e.preventDefault();
+    });
 })();
 </script>
 {% endblock %}

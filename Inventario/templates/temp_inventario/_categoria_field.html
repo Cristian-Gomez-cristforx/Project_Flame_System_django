@@ -52,6 +52,7 @@ Parámetros:
                    id="id_nueva_categoria_{{ field_key }}"
                    class="form-control nueva-categoria-input"
                    placeholder="Nombre de la nueva categoría"
+                   maxlength="100"
                    value="{{ nueva_value|default_if_none:'' }}"
                    autocomplete="off">
             <button type="button" class="btn btn-outline-secondary cancel-nueva-categoria" title="Cancelar">

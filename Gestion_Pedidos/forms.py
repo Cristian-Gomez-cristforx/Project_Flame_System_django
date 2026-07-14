@@ -74,9 +74,9 @@ class PedidoCrearForm(forms.ModelForm):
         widgets = {
             'tipo': forms.Select(attrs=BOOTSTRAP_SELECT),
             'mesa': forms.Select(attrs=BOOTSTRAP_SELECT),
-            'nombre_cliente': forms.TextInput(attrs=BOOTSTRAP_INPUT),
+            'nombre_cliente': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'maxlength': '100'}),
             'telefono_cliente': forms.TextInput(attrs={**NUMERIC_ATTRS, 'maxlength': str(TELEFONO_LEN)}),
-            'direccion_pedi': forms.TextInput(attrs=BOOTSTRAP_INPUT),
+            'direccion_pedi': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'maxlength': '150'}),
             'minutos_recogida': forms.NumberInput(attrs={
                 **BOOTSTRAP_INPUT,
                 'min': 1,
@@ -173,8 +173,9 @@ class AgregarProductoForm(forms.Form):
     )
     cantidad = forms.IntegerField(
         min_value=1,
+        max_value=99,
         initial=1,
-        widget=forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
+        widget=forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1, 'max': 99}),
     )
 
     def __init__(self, *args, pedido=None, **kwargs):
@@ -264,8 +265,9 @@ class AgregarBebidaForm(forms.Form):
     )
     cantidad = forms.IntegerField(
         min_value=1,
+        max_value=99,
         initial=1,
-        widget=forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
+        widget=forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1, 'max': 99}),
     )
 
     def __init__(self, *args, pedido=None, **kwargs):

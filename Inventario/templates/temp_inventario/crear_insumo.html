@@ -24,7 +24,7 @@
                 <div class="row">
                     <div class="col-md-12 mb-3">
                         <label class="form-label">Nombre del Insumo</label>
-                        <input type="text" name="nombre_insumo" class="form-control solo-letras"
+                        <input type="text" name="nombre_insumo" class="form-control solo-letras" maxlength="100"
                                value="{{ form.nombre_insumo.value|default_if_none:'' }}" required>
                         <div class="field-error text-danger small mt-1" data-for="nombre_insumo">{{ form.nombre_insumo.errors|join:" " }}</div>
                     </div>
@@ -52,7 +52,7 @@
                         <label class="form-label">Precio</label>
                         <input type="number" name="precio_insumo" id="precio_insumo"
                                class="form-control solo-enteros"
-                               min="1" step="1" inputmode="numeric" pattern="\d*"
+                               min="1" max="10000000" step="1" inputmode="numeric" pattern="\d*"
                                value="{{ form.precio_insumo.value|default_if_none:'' }}" required>
                         <div class="field-error text-danger small mt-1" data-for="precio_insumo">{{ form.precio_insumo.errors|join:" " }}</div>
                     </div>
@@ -159,9 +159,27 @@ document.querySelectorAll('.solo-letras').forEach(input => {
             if (!RE_NOMBRE_INS.test(s)) return 'El nombre solo permite letras y espacios.';
             return '';
         },
-        cantidad_insumo: v => (parseInt(v, 10) >= 1) ? '' : 'La cantidad debe ser al menos 1.',
+        cantidad_insumo: v => {
+            if (parseInt(v, 10) < 1) return 'La cantidad debe ser al menos 1.';
+            const precio = parseInt(q('precio_insumo').value, 10);
+            if (precio >= 1) {
+                const porUnidad = precio / parseInt(v, 10);
+                if (Math.round(porUnidad * 100) / 100 < 0.01) return 'El precio por unidad resultaría $0. Aumenta el precio o reduce la cantidad.';
+            }
+            return '';
+        },
         unidad_medida: v => v ? '' : 'Selecciona una unidad.',
-        precio_insumo: v => (parseInt(v, 10) >= 1) ? '' : 'El precio debe ser al menos 1.',
+        precio_insumo: v => {
+            const n = parseInt(v, 10);
+            if (!(n >= 1)) return 'El precio debe ser al menos 1.';
+            if (n > 10000000) return 'El precio no puede superar 10.000.000.';
+            const cant = parseInt(q('cantidad_insumo').value, 10);
+            if (cant >= 1) {
+                const porUnidad = n / cant;
+                if (Math.round(porUnidad * 100) / 100 < 0.01) return 'El precio por unidad resultaría $0. Aumenta el precio o reduce la cantidad.';
+            }
+            return '';
+        },
     };
 
     const touched = new Set();

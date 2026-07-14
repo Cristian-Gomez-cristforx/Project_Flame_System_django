@@ -1,6 +1,9 @@
 from django.db import models
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
+
+
+PRECIO_MAX = 10_000_000
 from decimal import Decimal, ROUND_HALF_UP
 from math import ceil
 
@@ -20,7 +23,7 @@ class Categoria(models.Model):
 
 
     nombre_categoria = models.CharField(
-        max_length=80,
+        max_length=100,
         unique=True,
         validators=[validar_solo_letras],
         verbose_name="Nombre de la Categoría"
@@ -68,7 +71,7 @@ class Insumo(models.Model):
     nombre_insumo   = models.CharField(max_length=100, validators=[validar_solo_letras], unique=True)
     cantidad_insumo = models.PositiveIntegerField(validators=[MinValueValidator(0)])
     unidad_medida   = models.CharField(max_length=20, choices=UNIDAD_CHOICES, default='g')
-    precio_insumo   = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1)])
+    precio_insumo   = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1), MaxValueValidator(PRECIO_MAX)])
     categoria       = models.ForeignKey(
         'Categoria', 
         on_delete=models.PROTECT, 
@@ -76,9 +79,9 @@ class Insumo(models.Model):
         related_name='insumos'
     )
     
-    precio_gramo    = models.DecimalField(max_digits=7, decimal_places=2, default=0, verbose_name="Precio Gramo")
+    precio_gramo    = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Precio Gramo")
     stock_maximo    = models.PositiveIntegerField(default=0, editable=False)
-    cantidad_a_agregar = models.DecimalField(max_digits=8, decimal_places=2,null=True, blank=True,default=0,validators=[MinValueValidator(0)])
+    cantidad_a_agregar = models.PositiveIntegerField(null=True, blank=True, default=0)
     
 
     class Meta:
@@ -91,7 +94,16 @@ class Insumo(models.Model):
 
     
     def clean(self):
-        # Si el campo está vacío no hacer nada
+        if self.precio_insumo and self.cantidad_insumo and self.cantidad_insumo > 0:
+            precio_gramo_calc = (
+                Decimal(self.precio_insumo) / Decimal(self.cantidad_insumo)
+            ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            if precio_gramo_calc <= 0:
+                raise ValidationError(
+                    'El precio por unidad resultante sería $0. '
+                    'Aumenta el precio o reduce la cantidad.'
+                )
+
         if not self.cantidad_a_agregar:
             return
 
@@ -114,8 +126,8 @@ class Insumo(models.Model):
                 })
     
     def save(self, *args, **kwargs):
-        # Ejecutar validaciones
-        self.full_clean()
+        if 'update_fields' not in kwargs:
+            self.full_clean()
 
         edito_cantidad_directamente = False
 
@@ -201,7 +213,7 @@ class Insumo(models.Model):
 class Producto(models.Model):
     id_producto      = models.AutoField(primary_key=True)
     nombre_producto  = models.CharField(max_length=100, validators=[validar_solo_letras])
-    precio_producto  = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1)])
+    precio_producto  = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1), MaxValueValidator(PRECIO_MAX)])
     categoria        = models.ForeignKey(
         'Categoria', 
         on_delete=models.PROTECT, 
@@ -226,8 +238,8 @@ class Bebida(models.Model):
     nombre_bebida      = models.CharField(max_length=100, validators=[validar_solo_letras])
     tamaño_bebida      = models.CharField(max_length=20, choices=TAMAÑO_CHOICES)
     cantidad_bebida    = models.PositiveIntegerField(validators=[MinValueValidator(1)])
-    precio_compra      = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1)])
-    precio_venta       = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1)])
+    precio_compra      = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1), MaxValueValidator(PRECIO_MAX)])
+    precio_venta       = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1), MaxValueValidator(PRECIO_MAX)])
     categoria          = models.ForeignKey( 'Categoria',  on_delete=models.PROTECT,  related_name='bebidas' )
     cantidad_a_agregar = models.PositiveIntegerField(default=0, null=True, blank=True,verbose_name="Cantidad adicional")
     precio_unitario_compra = models.DecimalField(max_digits=8, decimal_places=0, default=0, verbose_name="Precio Unitario Compra")
@@ -255,14 +267,18 @@ class Bebida(models.Model):
         return f"{self.nombre_bebida} ({self.tamaño_bebida})"
     
     def clean(self):
-
-        if self.precio_compra and self.cantidad_bebida:
+        if self.precio_compra and self.cantidad_bebida and self.cantidad_bebida > 0:
             unitario_compra = Decimal(self.precio_compra) / Decimal(self.cantidad_bebida)
+            if unitario_compra.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) <= 0:
+                raise ValidationError({
+                    'precio_compra':
+                    'El precio unitario de compra resultaría $0. Aumenta el precio o reduce la cantidad.'
+                })
             if self.precio_venta and Decimal(self.precio_venta) <= unitario_compra:
                 raise ValidationError({
                     'precio_venta':
                     f'El precio de venta por unidad debe ser mayor que el costo unitario (${unitario_compra:.0f}).'
-                 })
+                })
             
         if not self.cantidad_a_agregar:
             return
@@ -306,9 +322,9 @@ class Bebida(models.Model):
                 raise ValidationError(errores)
             
     def save(self, *args, **kwargs):
-
         self.full_clean()
-        
+
+        bebida_original = None
         if self.pk:
             bebida_original = Bebida.objects.get(pk=self.pk)
 
@@ -354,7 +370,12 @@ class Bebida(models.Model):
                 # reiniciar
                 self.cantidad_a_agregar = 0
 
-        if self.cantidad_bebida > self.stock_maximo:
+        # Edición directa de cantidad (sin reabastecer): nueva cantidad = nuevo stock máximo
+        if (bebida_original
+                and not (self.cantidad_a_agregar and self.cantidad_a_agregar > 0)
+                and self.cantidad_bebida != bebida_original.cantidad_bebida):
+            self.stock_maximo = self.cantidad_bebida
+        elif self.cantidad_bebida > self.stock_maximo:
             self.stock_maximo = self.cantidad_bebida
 
         if self.cantidad_bebida > 0:
@@ -431,7 +452,7 @@ class RecetaProducto(models.Model):
 class DetalleReceta(models.Model):
     receta             = models.ForeignKey(RecetaProducto, on_delete=models.CASCADE, related_name='detalles')
     insumo             = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name='en_recetas')
-    cantidad_requerida = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    cantidad_requerida = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5000)])
 
       
     @property

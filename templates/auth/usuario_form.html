@@ -146,6 +146,34 @@
 
 {% block extra_js %}
 <script>
+    const RE_SOLO_LETRAS_USR = /[^A-Za-zÁÉÍÓÚÜáéíóúüÑñ ]+/g;
+    const RE_SOLO_USERNAME = /[^A-Za-zÁÉÍÓÚÜáéíóúüÑñ0-9]+/g;
+    document.addEventListener('keydown', e => {
+        if (e.target.classList?.contains('solo-enteros')) {
+            if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+        }
+    });
+    document.addEventListener('input', e => {
+        const t = e.target;
+        if (!t.classList) return;
+        if (t.classList.contains('solo-enteros')) {
+            t.value = t.value.replace(/[^\d]/g, '');
+        } else if (t.classList.contains('solo-telefono')) {
+            const hasPlus = t.value.startsWith('+');
+            const digitos = t.value.replace(/[^\d]/g, '');
+            const limpio = (hasPlus ? '+' : '') + digitos;
+            if (limpio !== t.value) t.value = limpio;
+        } else if (t.classList.contains('solo-letras')) {
+            const antes = t.value;
+            const limpio = antes.replace(RE_SOLO_LETRAS_USR, '');
+            if (antes !== limpio) t.value = limpio;
+        } else if (t.classList.contains('solo-username')) {
+            const antes = t.value;
+            const limpio = antes.replace(RE_SOLO_USERNAME, '');
+            if (antes !== limpio) t.value = limpio;
+        }
+    });
+
     (function () {
         const form = document.getElementById('usuario-form');
         if (!form) return;
@@ -153,7 +181,8 @@
         const LETRAS = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/;
         const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         const DIGITOS = /^\d+$/;
-        const USERNAME = /^[\p{L}\p{N}_.@+\-]+$/u;
+        const TELEFONO = /^\+\d{2}\d+$/;
+        const USERNAME = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ0-9]+$/;
 
         const reglas = [
             {
@@ -161,9 +190,9 @@
                 required: true,
                 requiredMsg: 'El nombre de usuario es obligatorio.',
                 pattern: USERNAME,
-                patternMsg: 'El usuario solo admite letras, números y los símbolos . _ @ + -',
-                max: 150,
-                lengthMsg: 'El usuario no puede superar 150 caracteres.',
+                patternMsg: 'El usuario solo admite letras y números.',
+                max: 50,
+                lengthMsg: 'El usuario no puede superar 50 caracteres.',
             },
             {
                 id: '{{ form.email.id_for_label }}',
@@ -178,6 +207,8 @@
                 requiredMsg: 'Los nombres son obligatorios.',
                 pattern: LETRAS,
                 patternMsg: 'Los nombres solo pueden contener letras.',
+                max: 50,
+                lengthMsg: 'Los nombres no pueden superar 50 caracteres.',
             },
             {
                 id: '{{ form.last_name.id_for_label }}',
@@ -185,6 +216,8 @@
                 requiredMsg: 'Los apellidos son obligatorios.',
                 pattern: LETRAS,
                 patternMsg: 'Los apellidos solo pueden contener letras.',
+                max: 50,
+                lengthMsg: 'Los apellidos no pueden superar 50 caracteres.',
             },
             {
                 id: '{{ form.documento.id_for_label }}',
@@ -198,11 +231,11 @@
             {
                 id: '{{ form.telefono.id_for_label }}',
                 required: false,
-                pattern: DIGITOS,
-                patternMsg: 'El teléfono solo admite números.',
-                min: 10,
-                max: 10,
-                lengthMsg: 'El teléfono debe tener exactamente 10 dígitos.',
+                pattern: TELEFONO,
+                patternMsg: 'El teléfono debe iniciar con + y el código de país (ej: +57...).',
+                min: 13,
+                max: 14,
+                lengthMsg: 'El teléfono debe tener entre 13 y 14 caracteres.',
             },
         ];
 
