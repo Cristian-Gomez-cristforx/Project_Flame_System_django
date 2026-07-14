@@ -13,7 +13,7 @@ from login_modify_django.decorators import admin_requerido
 from Gestion_Pedidos.models import Pedido
 
 from . import services
-from .forms import RangoFechasForm, RangoMesesForm
+from .forms import FiltroPedidosReporteForm, RangoFechasForm, RangoMesesForm
 
 
 _LOGO_FADEADO_CACHE = None
@@ -58,20 +58,60 @@ def _rango_desde_request(request):
 
 @admin_requerido
 def dashboard(request):
-    """Dashboard general: ventas, mermas, estado de inventario y top productos del rango."""
-    desde, hasta, form = _rango_desde_request(request)
+    """Reporte de pedidos: tabla filtrable por fechas, estado, tipo y cliente."""
+    hoy = timezone.localdate()
+    tz = timezone.get_current_timezone()
 
-    ventas = services.resumen_ventas(desde, hasta)
-    mermas = services.resumen_mermas(desde, hasta)
-    inventario = services.estado_inventario()
-    top_prod = services.top_productos(desde, hasta, limite=5)
+    ESTADOS_DEFAULT = [Pedido.EstadoPedido.FINALIZADO, Pedido.EstadoPedido.CANCELADO]
+
+    filtrado = bool(request.GET)
+    if filtrado:
+        form = FiltroPedidosReporteForm(request.GET)
+    else:
+        form = FiltroPedidosReporteForm(initial={'desde': hoy, 'hasta': hoy})
+
+    pedidos_qs = (
+        Pedido.objects
+        .select_related('mesa', 'mesero')
+        .order_by('-fecha_creacion')
+    )
+
+    if filtrado and form.is_valid():
+        cd = form.cleaned_data
+        desde = cd.get('desde') or hoy
+        hasta = cd.get('hasta') or hoy
+    else:
+        desde = hasta = hoy
+
+    inicio = timezone.make_aware(datetime.combine(desde, datetime.min.time()), tz)
+    fin = timezone.make_aware(datetime.combine(hasta, datetime.max.time()), tz)
+    pedidos_qs = pedidos_qs.filter(fecha_creacion__range=(inicio, fin))
+
+    if filtrado and form.is_valid():
+        cd = form.cleaned_data
+        if cd.get('estado'):
+            pedidos_qs = pedidos_qs.filter(estado=cd['estado'])
+        else:
+            pedidos_qs = pedidos_qs.filter(estado__in=ESTADOS_DEFAULT)
+        if cd.get('tipo'):
+            pedidos_qs = pedidos_qs.filter(tipo=cd['tipo'])
+        if cd.get('q'):
+            from django.db.models import Q
+            q = cd['q']
+            pedidos_qs = pedidos_qs.filter(
+                Q(nombre_cliente__icontains=q)
+                | Q(numero_factura__icontains=q)
+                | Q(mesero__username__icontains=q)
+                | Q(mesero__first_name__icontains=q)
+                | Q(mesero__last_name__icontains=q)
+            )
+    else:
+        pedidos_qs = pedidos_qs.filter(estado__in=ESTADOS_DEFAULT)
 
     return render(request, 'reportes/dashboard.html', {
         'form': form,
-        'ventas': ventas,
-        'mermas': mermas,
-        'inventario': inventario,
-        'top_productos': top_prod,
+        'pedidos': pedidos_qs,
+        'filtrado': filtrado,
     })
 
 

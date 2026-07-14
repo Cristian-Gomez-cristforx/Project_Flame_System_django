@@ -57,10 +57,10 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Venta por Unidad</label>
-                        <input type="number" name="precio_venta" class="form-control solo-enteros"
+                        <input type="number" name="precio_unitario_venta" class="form-control solo-enteros"
                                min="1" max="10000000" step="1" inputmode="numeric" pattern="\d*"
-                               value="{{ form.precio_venta.value|default_if_none:'' }}" required>
-                        <div class="field-error text-danger small mt-1" data-for="precio_venta">{{ form.precio_venta.errors|join:" " }}</div>
+                               value="{{ form.precio_unitario_venta.value|default_if_none:'' }}" required>
+                        <div class="field-error text-danger small mt-1" data-for="precio_unitario_venta">{{ form.precio_unitario_venta.errors|join:" " }}</div>
                     </div>
                 </div>
 
@@ -158,7 +158,7 @@ document.querySelectorAll('.solo-letras').forEach(input => {
             }
             return '';
         },
-        precio_venta: v => {
+        precio_unitario_venta: v => {
             const venta = parseInt(v, 10);
             const compra = parseInt(q('precio_compra').value, 10);
             const cant = parseInt(q('cantidad_bebida').value, 10);
@@ -183,8 +183,8 @@ document.querySelectorAll('.solo-letras').forEach(input => {
             if (!input) continue;
             const msg = validators[name](input.value);
             if (msg) ok = false;
-            // precio_venta siempre muestra su error (depende de otros campos)
-            setErr(name, (touched.has(name) || name === 'precio_venta') ? msg : '');
+            // precio_unitario_venta siempre muestra su error (depende de otros campos)
+            setErr(name, (touched.has(name) || name === 'precio_unitario_venta') ? msg : '');
         }
         return ok;
     }

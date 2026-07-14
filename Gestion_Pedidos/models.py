@@ -142,16 +142,14 @@ class DetallePedidoBebida(models.Model):
 
     cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(99)])
 
-    precio_unitario = models.DecimalField(max_digits=10,decimal_places=2,validators=[MinValueValidator(0), MaxValueValidator(PRECIO_MAX)])
-
-    subtotal = models.DecimalField(max_digits=12,decimal_places=2,validators=[MinValueValidator(0)])
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(PRECIO_MAX)])
+    costo_unitario_compra = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
 
     def save(self, *args, **kwargs):
-
-        self.precio_unitario = self.bebida.precio_venta#Cambiar por precio_unidad_venta
-
-        self.subtotal = (self.cantidad *self.precio_unitario)
-
+        self.precio_unitario = self.bebida.precio_unitario_venta
+        self.costo_unitario_compra = self.bebida.costo_unitario
+        self.subtotal = self.cantidad * self.precio_unitario
         super().save(*args, **kwargs)
 
     def __str__(self):

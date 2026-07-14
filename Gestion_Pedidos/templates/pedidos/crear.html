@@ -92,15 +92,23 @@
         if (!form) return;
 
         const LETRAS = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/;
-        const DIGITOS = /^\d+$/;
+        const TELEFONO_RE = /^\+\d{2}\d+$/;
 
         const nombreInput = document.getElementById('{{ form.nombre_cliente.id_for_label }}');
         if (nombreInput) {
             nombreInput.addEventListener('input', function () {
                 const limpio = nombreInput.value.replace(/[^A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]/g, '');
-                if (limpio !== nombreInput.value) {
-                    nombreInput.value = limpio;
-                }
+                if (limpio !== nombreInput.value) nombreInput.value = limpio;
+            });
+        }
+
+        const telefonoInput = document.getElementById('{{ form.telefono_cliente.id_for_label }}');
+        if (telefonoInput) {
+            telefonoInput.addEventListener('input', function () {
+                let v = telefonoInput.value;
+                if (!v.startsWith('+')) v = v.replace(/[^\d]/g, '');
+                else v = '+' + v.slice(1).replace(/[^\d]/g, '');
+                if (v !== telefonoInput.value) telefonoInput.value = v;
             });
         }
 
@@ -112,11 +120,11 @@
             },
             {
                 id: '{{ form.telefono_cliente.id_for_label }}',
-                pattern: DIGITOS,
-                patternMsg: 'El teléfono solo admite números.',
-                min: 10,
-                max: 10,
-                lengthMsg: 'El teléfono debe tener exactamente 10 dígitos.',
+                pattern: TELEFONO_RE,
+                patternMsg: 'El teléfono debe iniciar con +XX seguido de dígitos (ej: +573001234567).',
+                min: 13,
+                max: 14,
+                lengthMsg: 'El teléfono debe tener entre 13 y 14 caracteres.',
             },
         ];
 

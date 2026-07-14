@@ -163,11 +163,8 @@
                             <label class="form-label mb-1">Producto</label>
                             {{ form_producto.producto }}
                             <div class="text-danger small mt-1 d-none" data-duplicado-msg="producto">
-                                Este producto ya está en el pedido. Añade más unidades editando su fila o elimínalo primero.
+                                Este producto ya está en el pedido. Elimínalo primero.
                             </div>
-                            {% if form_producto.producto.errors %}
-                                <div class="text-danger small mt-1">{{ form_producto.producto.errors|join:', ' }}</div>
-                            {% endif %}
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-1">Cantidad</label>
@@ -238,11 +235,8 @@
                             <label class="form-label mb-1">Bebida</label>
                             {{ form_bebida.bebida }}
                             <div class="text-danger small mt-1 d-none" data-duplicado-msg="bebida">
-                                Esta bebida ya está en el pedido. Añade más unidades editando su fila o elimínala primero.
+                                Esta bebida ya está en el pedido. Elimínala primero.
                             </div>
-                            {% if form_bebida.bebida.errors %}
-                                <div class="text-danger small mt-1">{{ form_bebida.bebida.errors|join:', ' }}</div>
-                            {% endif %}
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-1">Cantidad</label>

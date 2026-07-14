@@ -190,7 +190,7 @@ class BebidaForm(forms.ModelForm):
             'tamaño_bebida',
             'cantidad_bebida',
             'precio_compra',
-            'precio_venta',
+            'precio_unitario_venta',
             'categoria',
             'cantidad_a_agregar',
         ]
@@ -199,7 +199,7 @@ class BebidaForm(forms.ModelForm):
             'tamaño_bebida': forms.Select(attrs=BOOTSTRAP_SELECT),
             'cantidad_bebida': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1}),
             'precio_compra': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1, 'max': 10000000}),
-            'precio_venta': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1, 'max': 10000000}),
+            'precio_unitario_venta': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 1, 'max': 10000000}),
             'categoria': forms.Select(attrs=BOOTSTRAP_SELECT),
             'cantidad_a_agregar': forms.NumberInput(attrs={**BOOTSTRAP_INPUT, 'min': 0, 'step': 1}),
         }

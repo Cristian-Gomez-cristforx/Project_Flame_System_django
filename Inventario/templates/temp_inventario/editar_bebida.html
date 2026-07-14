@@ -54,9 +54,9 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Precio de Venta por Unidad</label>
-                        <input type="number" name="precio_venta" class="form-control solo-enteros"
-                               value="{{ bebida.precio_venta|floatformat:0 }}" min="1" max="10000000" step="1" inputmode="numeric" pattern="\d*" required>
-                        <div class="field-error text-danger small mt-1" data-for="precio_venta"></div>
+                        <input type="number" name="precio_unitario_venta" class="form-control solo-enteros"
+                               value="{{ bebida.precio_unitario_venta|floatformat:0 }}" min="1" max="10000000" step="1" inputmode="numeric" pattern="\d*" required>
+                        <div class="field-error text-danger small mt-1" data-for="precio_unitario_venta"></div>
                     </div>
                 </div>
 
@@ -123,7 +123,7 @@ document.querySelectorAll('.solo-enteros').forEach(input => {
 
     const ORIG_CANTIDAD = {{ bebida.cantidad_bebida }};
     const ORIG_COMPRA   = {{ bebida.precio_compra|floatformat:0 }};
-    const ORIG_VENTA    = {{ bebida.precio_venta|floatformat:0 }};
+    const ORIG_VENTA    = {{ bebida.precio_unitario_venta|floatformat:0 }};
 
     const q = (name) => form.querySelector(`[name="${name}"]`);
     const err = (name) => form.querySelector(`.field-error[data-for="${name}"]`);
@@ -158,7 +158,7 @@ document.querySelectorAll('.solo-enteros').forEach(input => {
             }
             return '';
         },
-        precio_venta: v => {
+        precio_unitario_venta: v => {
             const venta = parseInt(v, 10);
             const compra = parseInt(q('precio_compra').value, 10);
             const cant = parseInt(q('cantidad_bebida').value, 10);
@@ -177,7 +177,7 @@ document.querySelectorAll('.solo-enteros').forEach(input => {
             if (!n || n <= 0) return '';
             const cantActual   = parseInt(q('cantidad_bebida').value, 10);
             const compraActual = parseInt(q('precio_compra').value, 10);
-            const ventaActual  = parseInt(q('precio_venta').value, 10);
+            const ventaActual  = parseInt(q('precio_unitario_venta').value, 10);
             if (cantActual !== ORIG_CANTIDAD || compraActual !== ORIG_COMPRA || ventaActual !== ORIG_VENTA) {
                 return 'No puedes reabastecer y modificar cantidad o precios al mismo tiempo.';
             }
@@ -194,8 +194,8 @@ document.querySelectorAll('.solo-enteros').forEach(input => {
             if (!input) continue;
             const msg = validators[name](input.value);
             if (msg) ok = false;
-            // precio_venta siempre muestra su error (depende de otros campos)
-            setErr(name, (touched.has(name) || name === 'precio_venta') ? msg : '');
+            // precio_unitario_venta siempre muestra su error (depende de otros campos)
+            setErr(name, (touched.has(name) || name === 'precio_unitario_venta') ? msg : '');
         }
         return ok;
     }

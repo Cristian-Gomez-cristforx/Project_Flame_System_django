@@ -1,49 +1,142 @@
 {% extends 'base.html' %}
 
-{% block title %}Reportes de pedidos{% endblock %}
+{% block title %}Historial de pedidos{% endblock %}
 {% block nav_reportes %}active{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1><i class="fas fa-receipt me-2"></i> Reportes de pedidos</h1>
-    <div>
-        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalReportePedidos">
-            <i class="fas fa-file-download"></i> Reporte de pedidos
-        </button>
+    <h1><i class="fas fa-receipt me-2"></i> Historial de pedidos</h1>
+    <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalReportePDF">
+        <i class="fas fa-file-pdf me-1"></i> Descargar PDF
+    </button>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end" id="form-filtro">
+            <div class="col-md-2">
+                <label class="form-label">Desde</label>
+                {{ form.desde }}
+                {% if form.desde.errors %}
+                    <div class="text-danger small mt-1">{{ form.desde.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Hasta</label>
+                {{ form.hasta }}
+                {% if form.hasta.errors %}
+                    <div class="text-danger small mt-1">{{ form.hasta.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Estado</label>
+                {{ form.estado }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Tipo</label>
+                {{ form.tipo }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Búsqueda</label>
+                {{ form.q }}
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                {% if filtrado %}
+                <a href="{{ request.path }}" class="btn btn-outline-secondary" title="Limpiar filtros">
+                    <i class="fas fa-xmark"></i>
+                </a>
+                {% endif %}
+                <button type="submit" class="btn btn-outline-primary flex-grow-1">
+                    <i class="fas fa-filter me-1"></i> Filtrar
+                </button>
+            </div>
+            {% if form.non_field_errors %}
+            <div class="col-12">
+                <div class="alert alert-danger py-2 mb-0">{{ form.non_field_errors|join:" " }}</div>
+            </div>
+            {% endif %}
+        </form>
     </div>
 </div>
 
-<div class="modal fade" id="modalReportePedidos" tabindex="-1" aria-labelledby="modalReportePedidosLabel" aria-hidden="true">
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Factura</th>
+                <th>Tipo</th>
+                <th>Cliente</th>
+                <th>Info</th>
+                <th>Mesero</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in pedidos %}
+            <tr>
+                <td><strong>{{ p.numero_factura|default:"—" }}</strong></td>
+                <td>{{ p.get_tipo_display }}</td>
+                <td>{{ p.nombre_cliente|default:"—" }}</td>
+                <td>
+                    {% if p.tipo == 'Mesa' and p.mesa %}
+                        <i class="fas fa-chair me-1"></i> Mesa {{ p.mesa.numero_mesa }}
+                    {% elif p.tipo == 'Domicilio' and p.direccion_pedi %}
+                        <i class="fas fa-map-marker-alt me-1"></i> {{ p.direccion_pedi }}
+                    {% elif p.tipo == 'Recoger' and p.minutos_recogida %}
+                        <i class="fas fa-clock me-1"></i> {{ p.minutos_recogida }} min
+                    {% elif p.tipo == 'Recoger' %}
+                        <span class="text-muted">N/A</span>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td>{{ p.mesero.get_username }}</td>
+                <td>
+                    <span class="badge-estado badge-{{ p.estado|lower|slice:':7' }}">
+                        {{ p.get_estado_display }}
+                    </span>
+                </td>
+                <td class="text-muted-sm">{{ p.fecha_creacion|date:"d M Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                    No hay pedidos que coincidan con los filtros aplicados.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="modalReportePDF" tabindex="-1" aria-labelledby="modalReportePDFLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="modalReportePedidosLabel">
-                    <i class="fas fa-file-download me-2"></i> Reporte de pedidos
+                <h5 class="modal-title" id="modalReportePDFLabel">
+                    <i class="fas fa-file-pdf me-2"></i> Descargar reporte PDF
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <form id="formReportePedidos" method="get" action="{% url 'reportes:descargar_pedidos' %}">
+            <form id="formReportePDF" method="get" action="{% url 'reportes:descargar_pedidos' %}">
                 <div class="modal-body">
-                    <p class="text-muted-sm mb-3">Selecciona el rango de fechas para generar el reporte.</p>
+                    <p class="text-muted-sm mb-3">Selecciona el rango de fechas para el PDF.</p>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="reporte_desde" class="form-label">Desde</label>
-                            <input type="date" class="form-control" id="reporte_desde" name="desde" required>
+                            <label for="pdf_desde" class="form-label">Desde</label>
+                            <input type="date" class="form-control" id="pdf_desde" name="desde" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="reporte_hasta" class="form-label">Hasta</label>
-                            <input type="date" class="form-control" id="reporte_hasta" name="hasta" required>
+                            <label for="pdf_hasta" class="form-label">Hasta</label>
+                            <input type="date" class="form-control" id="pdf_hasta" name="hasta" required>
                         </div>
                     </div>
-                    <div id="reporteRangoTexto" class="alert alert-light border mt-3 mb-0 text-center d-none">
-                        <i class="fas fa-calendar-alt me-1"></i>
-                        <span id="reporteRangoContenido"></span>
-                    </div>
-                    <div id="reporteError" class="alert alert-danger mt-3 mb-0 d-none"></div>
+                    <div id="pdfError" class="alert alert-danger mt-3 mb-0 d-none"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success" id="btnDescargarReporte">
+                    <button type="submit" class="btn btn-success" id="btnPDF">
                         <i class="fas fa-download me-1"></i> Descargar
                     </button>
                 </div>
@@ -51,193 +144,36 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
-(function() {
-    const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+(function () {
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    const pdfDesde = document.getElementById('pdf_desde');
+    const pdfHasta = document.getElementById('pdf_hasta');
+    const pdfError = document.getElementById('pdfError');
+    const btnPDF = document.getElementById('btnPDF');
+    if (!pdfDesde) return;
 
-    const inputDesde = document.getElementById('reporte_desde');
-    const inputHasta = document.getElementById('reporte_hasta');
-    const cajaRango = document.getElementById('reporteRangoTexto');
-    const contRango = document.getElementById('reporteRangoContenido');
-    const cajaError = document.getElementById('reporteError');
-    const btnDescargar = document.getElementById('btnDescargarReporte');
-    const form = document.getElementById('formReportePedidos');
+    pdfDesde.max = hoyStr;
+    pdfHasta.max = hoyStr;
 
-    const hoy = new Date();
-    const hoyStr = hoy.toISOString().slice(0, 10);
-    inputDesde.max = hoyStr;
-    inputHasta.max = hoyStr;
-
-    function formatear(fechaStr) {
-        if (!fechaStr) return '';
-        const [y, m, d] = fechaStr.split('-').map(Number);
-        return `${d} de ${MESES[m - 1]} ${y}`;
+    function validarPDF() {
+        const d = pdfDesde.value, h = pdfHasta.value;
+        if (d && d > hoyStr) { mostrarErr('La fecha "Desde" no puede ser posterior a hoy.'); return false; }
+        if (h && h > hoyStr) { mostrarErr('La fecha "Hasta" no puede ser posterior a hoy.'); return false; }
+        if (d && h && d > h) { mostrarErr('La fecha "Desde" no puede ser posterior a "Hasta".'); return false; }
+        ocultarErr(); return true;
     }
+    function mostrarErr(msg) { pdfError.textContent = msg; pdfError.classList.remove('d-none'); btnPDF.disabled = true; }
+    function ocultarErr() { pdfError.classList.add('d-none'); btnPDF.disabled = false; }
 
-    function mostrarError(msg) {
-        cajaError.textContent = msg;
-        cajaError.classList.remove('d-none');
-        btnDescargar.disabled = true;
-    }
-
-    function limpiarError() {
-        cajaError.classList.add('d-none');
-        cajaError.textContent = '';
-        btnDescargar.disabled = false;
-    }
-
-    function actualizar() {
-        limpiarError();
-        const desde = inputDesde.value;
-        const hasta = inputHasta.value;
-
-        if (desde && desde > hoyStr) {
-            mostrarError('La fecha "Desde" no puede ser posterior a hoy.');
-        }
-        if (hasta && hasta > hoyStr) {
-            mostrarError('La fecha "Hasta" no puede ser posterior a hoy.');
-        }
-        if (desde && hasta && desde > hasta) {
-            mostrarError('La fecha "Desde" no puede ser posterior a "Hasta".');
-        }
-
-        if (desde && hasta) {
-            contRango.innerHTML = `Desde <strong>${formatear(desde)}</strong> hasta <strong>${formatear(hasta)}</strong>`;
-            cajaRango.classList.remove('d-none');
-        } else {
-            cajaRango.classList.add('d-none');
-        }
-    }
-
-    inputDesde.addEventListener('change', actualizar);
-    inputHasta.addEventListener('change', actualizar);
-
-    form.addEventListener('submit', function(e) {
-        const desde = inputDesde.value;
-        const hasta = inputHasta.value;
-        if (!desde || !hasta) {
-            e.preventDefault();
-            mostrarError('Selecciona ambas fechas.');
-            return;
-        }
-        if (desde > hoyStr || hasta > hoyStr || desde > hasta) {
-            e.preventDefault();
-            actualizar();
-            return;
-        }
+    pdfDesde.addEventListener('change', validarPDF);
+    pdfHasta.addEventListener('change', validarPDF);
+    document.getElementById('formReportePDF').addEventListener('submit', function (e) {
+        if (!validarPDF()) e.preventDefault();
     });
 })();
 </script>
-
-{% include 'reportes/_filtro.html' %}
-
-<p class="text-muted-sm">
-    {% if request.GET.desde or request.GET.hasta %}
-        Período: <strong>{{ ventas.desde|date:"d/m/Y" }}</strong> a <strong>{{ ventas.hasta|date:"d/m/Y" }}</strong>
-    {% else %}
-        Período: <strong>Hoy</strong>
-    {% endif %}
-</p>
-
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card card-elevated h-100">
-            <div class="card-body">
-                <div class="text-muted-sm">Pedidos cobrados</div>
-                <h2 class="mb-0">{{ ventas.total_pedidos }}</h2>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-elevated h-100">
-            <div class="card-body">
-                <div class="text-muted-sm">Ingresos</div>
-                <h2 class="mb-0 text-success">${{ ventas.total_ingresos|floatformat:0 }}</h2>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-elevated h-100">
-            <div class="card-body">
-                <div class="text-muted-sm">Ticket promedio</div>
-                <h2 class="mb-0">${{ ventas.ticket_promedio|floatformat:0 }}</h2>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-elevated h-100">
-            <div class="card-body">
-                <div class="text-muted-sm">Costo de mermas</div>
-                <h2 class="mb-0 text-danger">${{ mermas.total_costo|floatformat:0 }}</h2>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4">
-    <div class="col-lg-6">
-        <div class="card shadow">
-            <div class="card-header">Top 5 productos</div>
-            <div class="card-body">
-                <table class="table table-sm align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th class="text-end">Unidades</th>
-                            <th class="text-end">Ingresos</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in top_productos %}
-                        <tr>
-                            <td>{{ item.producto__nombre_producto }}</td>
-                            <td class="text-end fw-bold">{{ item.unidades }}</td>
-                            <td class="text-end text-success">${{ item.ingresos|floatformat:0 }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="3" class="text-center text-muted py-3">Sin ventas en el período.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-6">
-        <div class="card shadow">
-            <div class="card-header">Estado de inventario</div>
-            <div class="card-body">
-                <div class="d-flex justify-content-around text-center">
-                    <div>
-                        <div class="text-muted-sm">Total insumos</div>
-                        <h3>{{ inventario.total_insumos }}</h3>
-                    </div>
-                    <div>
-                        <div class="text-muted-sm">Stock bajo</div>
-                        <h3 class="stock-bajo">{{ inventario.stock_bajo|length }}</h3>
-                    </div>
-                    <div>
-                        <div class="text-muted-sm">Sin turno</div>
-                        <h3 class="text-muted">{{ inventario.sin_turno|length }}</h3>
-                    </div>
-                    <div>
-                        <div class="text-muted-sm">OK</div>
-                        <h3 class="stock-ok">{{ inventario.ok|length }}</h3>
-                    </div>
-                </div>
-                {% if inventario.stock_bajo %}
-                    <hr>
-                    <div class="text-muted-sm mb-2">Insumos con stock bajo:</div>
-                    <ul class="mb-0">
-                        {% for insumo in inventario.stock_bajo|slice:":5" %}
-                            <li>{{ insumo.nombre_insumo }} — <span class="stock-bajo">{{ insumo.porcentaje_del_maximo }}%</span></li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}

@@ -3,6 +3,8 @@ from datetime import date
 from django import forms
 from django.utils import timezone
 
+from Gestion_Pedidos.models import Pedido
+
 
 class RangoFechasForm(forms.Form):
     desde = forms.DateField(
@@ -59,4 +61,49 @@ class RangoMesesForm(forms.Form):
             raise forms.ValidationError('El mes final no puede ser posterior al mes actual.')
         if desde and hasta and desde > hasta:
             raise forms.ValidationError('El mes inicial no puede ser posterior al mes final.')
+        return cleaned
+
+
+class FiltroPedidosReporteForm(forms.Form):
+    desde = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Desde',
+    )
+    hasta = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Hasta',
+    )
+    estado = forms.ChoiceField(
+        required=False,
+        choices=[
+            ('', 'Todos los estados'),
+            (Pedido.EstadoPedido.CANCELADO, 'Cancelado'),
+            (Pedido.EstadoPedido.FINALIZADO, 'Finalizado'),
+        ],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    tipo = forms.ChoiceField(
+        required=False,
+        choices=[('', 'Todos los tipos')] + list(Pedido.TipoPedido.choices),
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    q = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Cliente, factura, mesero...'}),
+        label='Búsqueda',
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        desde = cleaned.get('desde')
+        hasta = cleaned.get('hasta')
+        hoy = timezone.localdate()
+        if desde and desde > hoy:
+            self.add_error('desde', 'La fecha no puede ser posterior a hoy.')
+        if hasta and hasta > hoy:
+            self.add_error('hasta', 'La fecha no puede ser posterior a hoy.')
+        if desde and hasta and desde > hasta:
+            self.add_error('desde', 'La fecha "Desde" no puede ser posterior a "Hasta".')
         return cleaned

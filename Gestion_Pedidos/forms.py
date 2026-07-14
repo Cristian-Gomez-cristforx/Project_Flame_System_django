@@ -8,8 +8,12 @@ from Inventario.models import Bebida, Producto, RecetaProducto
 from login_modify_django.forms import (
     NUMERIC_ATTRS,
     TELEFONO_LEN,
+    TELEFONO_MIN,
+    TELEFONO_MAX,
+    TELEFONO_PLACEHOLDER,
     solo_letras,
     solo_numeros,
+    solo_telefono,
 )
 
 from .models import (
@@ -75,7 +79,13 @@ class PedidoCrearForm(forms.ModelForm):
             'tipo': forms.Select(attrs=BOOTSTRAP_SELECT),
             'mesa': forms.Select(attrs=BOOTSTRAP_SELECT),
             'nombre_cliente': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'maxlength': '100'}),
-            'telefono_cliente': forms.TextInput(attrs={**NUMERIC_ATTRS, 'maxlength': str(TELEFONO_LEN)}),
+            'telefono_cliente': forms.TextInput(attrs={
+                'class': 'form-control solo-telefono',
+                'inputmode': 'tel',
+                'pattern': r'\+\d{12,13}',
+                'maxlength': str(TELEFONO_MAX),
+                'placeholder': TELEFONO_PLACEHOLDER,
+            }),
             'direccion_pedi': forms.TextInput(attrs={**BOOTSTRAP_INPUT, 'maxlength': '150'}),
             'minutos_recogida': forms.NumberInput(attrs={
                 **BOOTSTRAP_INPUT,
@@ -93,6 +103,12 @@ class PedidoCrearForm(forms.ModelForm):
         self.fields['telefono_cliente'].required = False
         self.fields['direccion_pedi'].required = False
         self.fields['minutos_recogida'].required = False
+        self.fields['nombre_cliente'].validators.append(solo_letras)
+        self.fields['telefono_cliente'].validators.extend([
+            solo_telefono,
+            MinLengthValidator(TELEFONO_MIN, f'El teléfono debe tener entre {TELEFONO_MIN} y {TELEFONO_MAX} caracteres.'),
+            MaxLengthValidator(TELEFONO_MAX, f'El teléfono debe tener entre {TELEFONO_MIN} y {TELEFONO_MAX} caracteres.'),
+        ])
 
     def _puede_crear_mesa(self):
         if not self.user or not self.user.is_authenticated:
@@ -101,12 +117,6 @@ class PedidoCrearForm(forms.ModelForm):
             return True
         perfil = getattr(self.user, 'perfil', None)
         return bool(perfil and perfil.es_admin)
-        self.fields['nombre_cliente'].validators.append(solo_letras)
-        self.fields['telefono_cliente'].validators.extend([
-            solo_numeros,
-            MinLengthValidator(TELEFONO_LEN, f'El teléfono debe tener exactamente {TELEFONO_LEN} dígitos.'),
-            MaxLengthValidator(TELEFONO_LEN, f'El teléfono debe tener exactamente {TELEFONO_LEN} dígitos.'),
-        ])
 
     def clean_nueva_mesa(self):
         numero = self.cleaned_data.get('nueva_mesa')
@@ -239,7 +249,7 @@ class AgregarProductoForm(forms.Form):
         if producto and producto.pk in self._ya_en_pedido:
             self.add_error(
                 'producto',
-                f'"{producto.nombre_producto}" ya está en el pedido. Añade más unidades editando su fila o elimínalo primero.',
+                f'"{producto.nombre_producto}" ya está en el pedido. Elimínalo primero.',
             )
             return cleaned
         if producto and cantidad:
@@ -287,7 +297,7 @@ class AgregarBebidaForm(forms.Form):
         con_stock = [pk for pk, stock in stock_por_bebida.items() if stock > 0]
         self.fields['bebida'].queryset = bebidas.filter(pk__in=con_stock)
         self.fields['bebida'].label_from_instance = (
-            lambda obj: f'{obj.nombre_bebida} ({obj.tamaño_bebida}) | Stock: {stock_por_bebida.get(obj.pk, 0)} | ${obj.precio_venta:,.0f}'.replace(',', '.')
+            lambda obj: f'{obj.nombre_bebida} ({obj.tamaño_bebida}) | Stock: {stock_por_bebida.get(obj.pk, 0)} | ${obj.precio_unitario_venta:,.0f}'.replace(',', '.')
         )
         self._stock_por_bebida = stock_por_bebida
         self._ya_en_pedido = ya_en_pedido
@@ -299,7 +309,7 @@ class AgregarBebidaForm(forms.Form):
         if bebida and bebida.pk in self._ya_en_pedido:
             self.add_error(
                 'bebida',
-                f'"{bebida.nombre_bebida}" ya está en el pedido. Añade más unidades editando su fila o elimínalo primero.',
+                f'"{bebida.nombre_bebida}" ya está en el pedido. Elimínalo primero.',
             )
             return cleaned
         if bebida and cantidad:

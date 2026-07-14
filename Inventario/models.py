@@ -4,7 +4,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 PRECIO_MAX = 10_000_000
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN
 from math import ceil
 
 
@@ -184,7 +184,7 @@ class Insumo(models.Model):
         if self.cantidad_insumo > 0:
             self.precio_gramo = (
                 Decimal(self.precio_insumo) / Decimal(self.cantidad_insumo)
-            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            ).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
         else:
             self.precio_gramo = Decimal("0.00")
             
@@ -239,11 +239,10 @@ class Bebida(models.Model):
     tamaño_bebida      = models.CharField(max_length=20, choices=TAMAÑO_CHOICES)
     cantidad_bebida    = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     precio_compra      = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1), MaxValueValidator(PRECIO_MAX)])
-    precio_venta       = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1), MaxValueValidator(PRECIO_MAX)])
+    precio_unitario_venta       = models.DecimalField(max_digits=8, decimal_places=0, validators=[MinValueValidator(1), MaxValueValidator(PRECIO_MAX)])
     categoria          = models.ForeignKey( 'Categoria',  on_delete=models.PROTECT,  related_name='bebidas' )
     cantidad_a_agregar = models.PositiveIntegerField(default=0, null=True, blank=True,verbose_name="Cantidad adicional")
-    precio_unitario_compra = models.DecimalField(max_digits=8, decimal_places=0, default=0, verbose_name="Precio Unitario Compra")
-    precio_unitario_venta = models.DecimalField(max_digits=8, decimal_places=0, default=0,verbose_name="Precio Unitario Venta")
+    costo_unitario = models.DecimalField(max_digits=8, decimal_places=0, default=0, verbose_name="Costo Unitario")
     stock_maximo  = models.PositiveIntegerField(default=0, editable=False)
 
     class Meta:
@@ -274,9 +273,9 @@ class Bebida(models.Model):
                     'precio_compra':
                     'El precio unitario de compra resultaría $0. Aumenta el precio o reduce la cantidad.'
                 })
-            if self.precio_venta and Decimal(self.precio_venta) <= unitario_compra:
+            if self.precio_unitario_venta and Decimal(self.precio_unitario_venta) <= unitario_compra:
                 raise ValidationError({
-                    'precio_venta':
+                    'precio_unitario_venta':
                     f'El precio de venta por unidad debe ser mayor que el costo unitario (${unitario_compra:.0f}).'
                 })
             
@@ -312,10 +311,10 @@ class Bebida(models.Model):
                     f'{bebida_original.precio_compra} ¡Elige la opción correcto!.'
                 )
                 
-            if self.precio_venta != bebida_original.precio_venta:
-                errores['precio_venta'] = (
+            if self.precio_unitario_venta != bebida_original.precio_unitario_venta:
+                errores['precio_unitario_venta'] = (
                     f'No puedes añadir {self.cantidad_a_agregar} a la misma vez que quieres modficar la cantidad  actual de'
-                    f'{bebida_original.precio_venta} ¡Elige la opción correcto!.'
+                    f'{bebida_original.precio_unitario_venta} ¡Elige la opción correcto!.'
                 )
             
             if errores:
@@ -335,7 +334,7 @@ class Bebida(models.Model):
 
                 # mantener el mismo margen de ganancia
                 margen = (
-                    bebida_original.precio_venta /
+                    bebida_original.precio_unitario_venta /
                     bebida_original.precio_compra
                 )
 
@@ -363,7 +362,7 @@ class Bebida(models.Model):
                 )
 
                 # actualizar venta
-                self.precio_venta = round(
+                self.precio_unitario_venta = round(
                     self.precio_compra * margen
                 )
 
@@ -379,16 +378,11 @@ class Bebida(models.Model):
             self.stock_maximo = self.cantidad_bebida
 
         if self.cantidad_bebida > 0:
-            self.precio_unitario_compra = (
+            self.costo_unitario = (
                 Decimal(self.precio_compra) / Decimal(self.cantidad_bebida)
             ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-            self.precio_unitario_venta = (
-                Decimal(self.precio_venta) / Decimal(self.cantidad_bebida)
-            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         else:
-            self.precio_unitario_compra = Decimal("0.00")
-            self.precio_unitario_venta = Decimal("0.00")
+            self.costo_unitario = Decimal("0.00")
 
         super().save(*args, **kwargs)
         
@@ -520,10 +514,14 @@ class Merma(models.Model):
     def save(self, *args, **kwargs):
         
         if not self.pk:
+            precio_unit = (
+                Decimal(self.insumo.precio_insumo) / Decimal(self.insumo.cantidad_insumo)
+                if self.insumo.cantidad_insumo > 0 else Decimal("0")
+            ).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
             self.insumo_snapshot = (
-                f"{self.insumo.nombre_insumo} | "
-                f"{self.insumo.cantidad_insumo} gramos | "
-                f"${self.insumo.precio_insumo:,.0f}".replace(',','.')
+                f"{self.insumo.nombre_insumo} / "
+                f"{self.insumo.cantidad_insumo} {self.insumo.get_unidad_medida_display()} / "
+                f"${precio_unit:,.2f}".replace(',', '.')
             )
 
         
@@ -533,8 +531,12 @@ class Merma(models.Model):
         self.precio_insumo = self.insumo.precio_insumo
 
         if self.insumo.cantidad_insumo > 0:
-            precio_por_unidad = Decimal(self.insumo.precio_insumo) / Decimal(self.insumo.cantidad_insumo)
-            self.costo_total_merma = Decimal(self.cantidad_mermada) * precio_por_unidad
+            precio_unit = (
+                Decimal(self.insumo.precio_insumo) / Decimal(self.insumo.cantidad_insumo)
+            ).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+            self.costo_total_merma = (
+                Decimal(self.cantidad_mermada) * precio_unit
+            ).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
         else:
             self.costo_total_merma = Decimal('0.00')
             
@@ -557,7 +559,7 @@ class Merma(models.Model):
                 self.insumo.cantidad_insumo
             ).quantize(
                 Decimal("0.01"),
-                rounding=ROUND_HALF_UP
+                rounding=ROUND_DOWN
             )
         else:
             self.insumo.precio_gramo = Decimal("0.00")

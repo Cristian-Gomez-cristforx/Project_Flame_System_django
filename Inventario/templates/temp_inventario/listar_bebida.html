@@ -74,7 +74,7 @@
                         <th>Stock máx</th>
                         <th>% Stock máx</th>
                         <th>Estado</th>
-                        <th>Precio Venta</th>
+                        <th class="text-center">Precio Venta por Unidad</th>
                         <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
@@ -119,7 +119,7 @@
                                 <span class="badge bg-success">OK</span>
                             {% endif %}
                         </td>
-                        <td class="fw-bold text-success">${{ bebida.precio_venta|floatformat:0|intcomma }}</td>
+                        <td class="fw-bold text-success text-center">${{ bebida.precio_unitario_venta|floatformat:0|intcomma }}</td>
                         <td class="text-center">
                             <a href="{% url 'inventario:editar_bebida' bebida.id_bebida %}" class="btn btn-sm btn-warning">
                                 <i class="fas fa-edit"></i> Editar

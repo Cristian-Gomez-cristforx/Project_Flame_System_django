@@ -133,7 +133,7 @@ def construir_contexto_dashboard(request):
             pedido__in=finalizados_hoy,
         ).aggregate(
             total=Coalesce(
-                Sum(F('cantidad') * F('bebida__precio_unitario_compra')),
+                Sum(F('cantidad') * F('costo_unitario_compra')),
                 Value(Decimal('0')),
                 output_field=DecimalField(),
             )

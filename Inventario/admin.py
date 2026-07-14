@@ -89,23 +89,23 @@ class ProductoAdmin(admin.ModelAdmin):
 @admin.register(Bebida)
 class BebidaAdmin(admin.ModelAdmin):
     list_display = ['id_bebida', 'nombre_bebida', 'categoria', 'tamaño_bebida',
-                    'cantidad_bebida', 'precio_venta_formateado', 'estado_stock','precio_unitario_compra','precio_unitario_venta']
+                    'cantidad_bebida', 'precio_unitario_venta_formateado', 'estado_stock', 'costo_unitario_formateado']
     search_fields = ['nombre_bebida']
     list_filter = ['tamaño_bebida', 'categoria']
     ordering = ['nombre_bebida']
-    readonly_fields=[]
-    exclude = ['precio_unitario_compra','precio_unitario_venta']
+    readonly_fields = []
+    exclude = ['costo_unitario']
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == 'categoria':
             kwargs['queryset'] = Categoria.objects.filter(tipo=Categoria.Tipo.BEBIDA)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
     
-    def precio_venta_formateado(self, obj):
-        return f"${obj.precio_venta:,.0f}".replace(",", ".")
+    def precio_unitario_venta_formateado(self, obj):
+        return f"${obj.precio_unitario_venta:,.0f}".replace(",", ".")
 
-    precio_venta_formateado.short_description = "Precio Venta"
-    precio_venta_formateado.admin_order_field = "precio_venta"
+    precio_unitario_venta_formateado.short_description = "Precio Venta"
+    precio_unitario_venta_formateado.admin_order_field = "precio_unitario_venta"
         
         
 
@@ -117,18 +117,11 @@ class BebidaAdmin(admin.ModelAdmin):
         return mark_safe('<span style="color:green;">OK</span>')
     estado_stock.short_description = 'Stock'
     
-    def precio_unitario_compra(self, obj):
-        return(
-            f"${obj.precio_unitario_compra:,.0f}".replace(',','.')
-        )
-        
-    precio_unitario_compra.short_description = 'precio_uni_compra'
-    
-    def precio_unitario_venta(self, obj):
-        return(
-            f"${obj.precio_unitario_venta:,.0f}".replace(',','.')
-        )
-    precio_unitario_venta.short_description = 'precio_uni_venta'
+    def costo_unitario_formateado(self, obj):
+        return f"${obj.costo_unitario:,.0f}".replace(',', '.')
+
+    costo_unitario_formateado.short_description = 'Costo Unitario'
+    costo_unitario_formateado.admin_order_field = 'costo_unitario'
 
 
 # ====================== DETALLE DE RECETA ======================
