@@ -623,7 +623,10 @@ def cocina(request):
         Pedido.objects
         .filter(estado=Pedido.EstadoPedido.COCINA)
         .select_related('mesa')
-        .prefetch_related('productos__producto', 'bebidas__bebida')
+        .prefetch_related(
+            'productos__insumos__insumo',
+            'bebidas__bebida',
+        )
         .order_by('fecha_creacion')
     )
     return render(request, 'pedidos/cocina.html', {

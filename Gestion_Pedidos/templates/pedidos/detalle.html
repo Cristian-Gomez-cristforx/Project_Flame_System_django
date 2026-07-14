@@ -123,7 +123,26 @@
                     <tbody>
                         {% for d in pedido.productos.all %}
                             <tr>
-                                <td>{{ d.producto.nombre_producto }}</td>
+                                <td>
+                                    {{ d.producto.nombre_producto }}
+                                    {% if d.insumos.all %}
+                                    <ul class="list-unstyled mb-0 mt-1 ps-2" style="font-size:0.78rem; color:#777;">
+                                        {% for ins in d.insumos.all %}
+                                        <li>
+                                            {% if ins.usar %}
+                                                <i class="fas fa-minus me-1" style="font-size:0.6rem;"></i>
+                                                {{ ins.insumo.nombre_insumo }} — {{ ins.cantidad_requerida|floatformat:"-2" }} {{ ins.insumo.get_unidad_medida_display }}
+                                            {% else %}
+                                                <s class="text-muted">
+                                                    <i class="fas fa-minus me-1" style="font-size:0.6rem;"></i>
+                                                    {{ ins.insumo.nombre_insumo }} — {{ ins.cantidad_requerida|floatformat:"-2" }} {{ ins.insumo.get_unidad_medida_display }}
+                                                </s>
+                                            {% endif %}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% endif %}
+                                </td>
                                 <td class="text-center">{{ d.cantidad }}</td>
                                 <td class="text-end">${{ d.precio_unitario|floatformat:0 }}</td>
                                 <td class="text-end"><strong>${{ d.subtotal|floatformat:0 }}</strong></td>
@@ -325,7 +344,7 @@
                     </form>
                 {% endif %}
 
-                {% if pedido.estado != estados.FINALIZADO and pedido.estado != estados.CANCELADO %}
+                {% if pedido.estado != estados.FINALIZADO and pedido.estado != estados.CANCELADO and pedido.estado != estados.COCINADO and pedido.estado != estados.PAGADO %}
                     <form method="post" action="{% url 'pedidos:cambiar_estado' pedido.id_pedido %}"
                           onsubmit="return confirm('¿Cancelar este pedido?');">
                         {% csrf_token %}

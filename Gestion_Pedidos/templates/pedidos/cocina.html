@@ -51,7 +51,26 @@
 
                 <ul class="ticket-items">
                     {% for d in p.productos.all %}
-                        <li><strong>{{ d.cantidad }}×</strong> {{ d.producto.nombre_producto }}</li>
+                        <li>
+                            <strong>{{ d.cantidad }}×</strong> {{ d.producto.nombre_producto }}
+                            {% if d.insumos.all %}
+                            <ul class="list-unstyled mb-0 ps-3 mt-1" style="font-size:0.8rem; color:#666;">
+                                {% for ins in d.insumos.all %}
+                                <li>
+                                    {% if ins.usar %}
+                                        <i class="fas fa-minus me-1" style="font-size:0.6rem;"></i>
+                                        {{ ins.insumo.nombre_insumo }} — {{ ins.cantidad_requerida|floatformat:"-2" }} {{ ins.insumo.get_unidad_medida_display }}
+                                    {% else %}
+                                        <s class="text-muted">
+                                            <i class="fas fa-minus me-1" style="font-size:0.6rem;"></i>
+                                            {{ ins.insumo.nombre_insumo }} — {{ ins.cantidad_requerida|floatformat:"-2" }} {{ ins.insumo.get_unidad_medida_display }}
+                                        </s>
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </li>
                     {% endfor %}
                     {% for d in p.bebidas.all %}
                         <li class="text-muted">
